@@ -1,0 +1,211 @@
+/* Premium Home Page — Orange Avenue + scroll interactions */
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-body-premium {
+  font-family: var(--font-body);
+}
+
+.home-page {
+  --home-ink: #1a1612;
+  --home-cream: #faf6f0;
+  --home-gold: #c9a227;
+  --home-gold-light: #e8d5a3;
+  --home-forest: #2d5f3f;
+  --home-forest-deep: #152a1e;
+  background: var(--home-cream);
+  overflow-x: hidden;
+}
+
+.home-grain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.home-section-label {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--home-gold);
+}
+
+.home-glass {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.home-card-lift {
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.5s ease;
+}
+
+.home-card-lift:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 32px 64px -16px rgba(26, 22, 18, 0.2);
+}
+
+.home-horizontal-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.home-horizontal-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Reviews — horizontal snap carousel (no vertical scroll hijack) */
+.reviews-track {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.reviews-card {
+  scroll-snap-align: center;
+  max-height: none;
+}
+
+@keyframes home-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.home-shimmer-text {
+  background: linear-gradient(
+    90deg,
+    var(--home-forest) 0%,
+    var(--home-gold) 50%,
+    var(--home-forest) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: home-shimmer 6s linear infinite;
+}
+
+@keyframes home-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+.home-float {
+  animation: home-float 5s ease-in-out infinite;
+}
+
+.home-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: home-marquee 40s linear infinite;
+}
+
+@keyframes home-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.home-perspective {
+  perspective: 1200px;
+}
+
+/* ─── Premium Hero (no background image) ─────────────────────────────── */
+
+.hero-premium__bg {
+  background: linear-gradient(
+    145deg,
+    #faf6f0 0%,
+    #f0ebe3 35%,
+    #e8f0ea 65%,
+    #faf6f0 100%
+  );
+}
+
+.hero-premium__mesh {
+  background:
+    radial-gradient(ellipse 70% 55% at 15% 25%, rgba(201, 162, 39, 0.28), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 85% 15%, rgba(45, 95, 63, 0.22), transparent 50%),
+    radial-gradient(ellipse 50% 45% at 70% 80%, rgba(212, 165, 116, 0.2), transparent 55%),
+    radial-gradient(ellipse 40% 40% at 30% 70%, rgba(45, 95, 63, 0.12), transparent 50%);
+  animation: hero-mesh-drift 14s ease-in-out infinite alternate;
+}
+
+@keyframes hero-mesh-drift {
+  0% { transform: scale(1) translate(0, 0); opacity: 1; }
+  100% { transform: scale(1.08) translate(2%, -2%); opacity: 0.9; }
+}
+
+.hero-premium__grid {
+  background-image:
+    linear-gradient(rgba(45, 95, 63, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 95, 63, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 20%, transparent 75%);
+}
+
+.hero-premium__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.hero-premium__orb--1 {
+  width: 320px;
+  height: 320px;
+  top: 10%;
+  right: 5%;
+  background: rgba(201, 162, 39, 0.35);
+  animation: hero-orb-pulse 8s ease-in-out infinite;
+}
+
+.hero-premium__orb--2 {
+  width: 240px;
+  height: 240px;
+  bottom: 20%;
+  left: 5%;
+  background: rgba(45, 95, 63, 0.25);
+  animation: hero-orb-pulse 10s ease-in-out infinite 1s;
+}
+
+.hero-premium__orb--3 {
+  width: 180px;
+  height: 180px;
+  top: 45%;
+  left: 40%;
+  background: rgba(232, 213, 163, 0.5);
+  animation: hero-orb-pulse 7s ease-in-out infinite 0.5s;
+}
+
+@keyframes hero-orb-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+
+.hero-premium__ring {
+  width: min(55vw, 520px);
+  height: min(55vw, 520px);
+  border: 1px dashed rgba(201, 162, 39, 0.35);
+  border-radius: 50%;
+  animation: hero-ring-spin 48s linear infinite;
+}
+
+.hero-premium__ring::after {
+  content: '';
+  position: absolute;
+  inset: 12%;
+  border: 1px solid rgba(45, 95, 63, 0.12);
+  border-radius: 50%;
+}
+
+@keyframes hero-ring-spin {
+  from { transform: translateY(-50%) rotate(0deg); }
+  to { transform: translateY(-50%) rotate(360deg); }
+}

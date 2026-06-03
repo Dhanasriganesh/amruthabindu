@@ -1,0 +1,217 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ───────────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Admin docs: admins/{uid} OR admins/{email} (same ID as admin-auth emailDocId for normal emails)
+    // VITE_ADMIN_EMAILS only unlocks the UI — Firestore writes still need an admins/* document.
+    function adminDocIsActive(adminId) {
+      return exists(/databases/$(database)/documents/admins/$(adminId))
+        && get(/databases/$(database)/documents/admins/$(adminId)).data.active != false;
+    }
+
+    // config/adminAccess { adminEmails: ["you@example.com", ...] } — matches VITE_ADMIN_EMAILS
+    function isEmailInAdminAllowlist() {
+      return request.auth.token.email != null
+        && exists(/databases/$(database)/documents/config/adminAccess)
+        && request.auth.token.email in get(/databases/$(database)/documents/config/adminAccess).data.adminEmails;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        adminDocIsActive(request.auth.uid)
+        || (
+          request.auth.token.email != null
+          && adminDocIsActive(request.auth.token.email)
+        )
+        || isEmailInAdminAllowlist()
+      );
+    }
+
+    // CMS docs store JSON in `data` (products list, home/header maps with base64 image strings).
+    function validCmsWrite(docId) {
+      return request.resource.data.keys().hasAll(['data', 'lastUpdated'])
+        && request.resource.data.lastUpdated is string
+        && (
+          (docId == 'products' && request.resource.data.data is list)
+          || (docId == 'homeContent' && request.resource.data.data is map)
+          || (
+            docId == 'headerContent'
+            && request.resource.data.data is map
+            && (
+              !request.resource.data.data.keys().hasAny(['logo'])
+              || request.resource.data.data.logo is string
+            )
+          )
+        );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function orderBelongsToUser() {
+      return isSignedIn() && (
+        resource.data.user_id == request.auth.uid
+        || (
+          resource.data.keys().hasAny(['guest_email'])
+          && resource.data.guest_email == request.auth.token.email
+        )
+      );
+    }
+
+    function guestOrderLinkUpdate() {
+      return isSignedIn()
+        && resource.data.user_id == null
+        && resource.data.guest_email == request.auth.token.email
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['user_id', 'guest_email']);
+    }
+
+    function ecwidFieldsOnlyUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['ecwid_order_id', 'fulfillment_status', 'tracking_number']);
+    }
+
+    // ─── Admin allowlist (synced from VITE_ADMIN_EMAILS on first admin login) ─
+
+    match /config/adminAccess {
+      allow read: if isSignedIn();
+      // One-time bootstrap: first allowlisted email creates the config doc
+      allow create: if isSignedIn()
+        && !exists(/databases/$(database)/documents/config/adminAccess)
+        && request.resource.data.keys().hasAll(['adminEmails'])
+        && request.resource.data.adminEmails is list
+        && request.auth.token.email in request.resource.data.adminEmails;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ─── Admins (who can use /admin + write CMS) ───────────────────────────
+
+    match /admins/{adminId} {
+      // Signed-in users can read to verify admin access (email or uid doc)
+      allow read: if isSignedIn() && (
+        adminId == request.auth.uid
+        || (resource != null && resource.data.email == request.auth.token.email)
+      );
+      // Auto-provision admins/{uid} after allowlist exists (app calls on login)
+      allow create: if isSignedIn()
+        && adminId == request.auth.uid
+        && !exists(/databases/$(database)/documents/admins/$(adminId))
+        && request.resource.data.keys().hasAll(['email', 'active'])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.active != false
+        && isEmailInAdminAllowlist();
+      allow update: if isSignedIn()
+        && adminId == request.auth.uid
+        && isEmailInAdminAllowlist();
+      allow delete: if false;
+    }
+
+    // ─── CMS (products, home, header — includes base64 images in `data`) ─
+
+    match /cms/{docId} {
+      allow read: if true;
+      allow create, update: if isAdmin()
+        && docId in ['products', 'homeContent', 'headerContent']
+        && validCmsWrite(docId);
+      allow delete: if isAdmin()
+        && docId in ['products', 'homeContent', 'headerContent'];
+    }
+
+    // ─── Storefront content ────────────────────────────────────────────────
+
+    match /hero_slides/{slideId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /coupon_usage/{usageId} {
+      // list/get split: admins can query the collection; users only read their own docs
+      allow list: if isAdmin();
+      allow get: if isAdmin()
+        || (isSignedIn() && resource.data.user_id == request.auth.uid)
+        || (isSignedIn() && resource.data.user_email == request.auth.token.email);
+      allow create: if isSignedIn()
+        || (request.resource.data.keys().hasAll(['coupon_id', 'order_id']));
+      allow update, delete: if isAdmin();
+    }
+
+    // ─── Orders ────────────────────────────────────────────────────────────
+
+    match /orders/{orderId} {
+      // list/get split: admin analytics/orders pages query all orders (orderBy created_at)
+      allow list: if isAdmin();
+      allow get: if isAdmin() || orderBelongsToUser();
+
+      // Checkout: guests and logged-in users can place orders
+      allow create: if request.resource.data.keys().hasAll(['order_id', 'items', 'created_at'])
+        && request.resource.data.order_id is string
+        && request.resource.data.order_id.size() > 0
+        && request.resource.data.items is list
+        && (
+          !request.resource.data.keys().hasAny(['user_id'])
+          || request.resource.data.user_id == null
+          || (isSignedIn() && request.resource.data.user_id == request.auth.uid)
+        );
+
+      allow update: if isAdmin()
+        || (isSignedIn() && resource.data.user_id == request.auth.uid)
+        || guestOrderLinkUpdate()
+        || (
+          (resource.data.user_id == null || orderBelongsToUser())
+          && ecwidFieldsOnlyUpdate()
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // ─── Contact form ──────────────────────────────────────────────────────
+
+    match /contact_messages/{messageId} {
+      allow create: if request.resource.data.keys().hasAll(['email', 'message', 'created_at'])
+        && request.resource.data.email is string
+        && request.resource.data.message is string;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ─── Email marketing ───────────────────────────────────────────────────
+
+    match /email_marketing_list/{entryId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    // ─── User cart & favorites ─────────────────────────────────────────────
+
+    match /user_carts/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /user_favorites/{favoriteId} {
+      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.user_id == request.auth.uid
+        && favoriteId == request.auth.uid + '_' + request.resource.data.product_id;
+      allow delete: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow update: if false;
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

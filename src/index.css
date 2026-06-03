@@ -1,0 +1,225 @@
+@import "tailwindcss";
+@import "./styles/home-premium.css";
+@import "./styles/header-premium.css";
+@import "./styles/shop-premium.css";
+
+/* ========================================
+   PROFESSIONAL DESIGN SYSTEM
+   Amrutha Bindu - Natural Products
+   ======================================== */
+
+:root {
+  /* Brand Colors - Natural & Organic Theme */
+  --brand-primary: #2d5f3f;      /* Deep Forest Green - main brand */
+  --brand-primary-light: #3d7a51;
+  --brand-primary-dark: #1e4029;
+  
+  --brand-secondary: #d4a574;    /* Warm Gold - accents */
+  --brand-secondary-light: #e6c19a;
+  --brand-secondary-dark: #b8824d;
+  
+  --brand-accent: #8b9d83;       /* Sage Green - supporting */
+  --brand-accent-light: #a8b5a0;
+  --brand-accent-dark: #6d7d67;
+  
+  /* Neutrals */
+  --neutral-50: #fafaf9;
+  --neutral-100: #f5f5f4;
+  --neutral-200: #e7e5e4;
+  --neutral-300: #d6d3d1;
+  --neutral-400: #a8a29e;
+  --neutral-500: #78716c;
+  --neutral-600: #57534e;
+  --neutral-700: #44403c;
+  --neutral-800: #292524;
+  --neutral-900: #1c1917;
+  
+  /* Semantic Colors */
+  --success: #059669;
+  --warning: #d97706;
+  --error: #dc2626;
+  --info: #0891b2;
+  
+  /* Spacing Scale */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+  
+  /* Typography */
+  --font-display: 'Orange Avenue', 'Cormorant Garamond', Georgia, serif;
+  --font-heading: var(--font-display);
+  --font-body: 'DM Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+/* Premium Fonts */
+@font-face {
+  font-family: 'Orange Avenue';
+  src: url('/fonts/OrangeAvenue-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--neutral-50);
+  color: var(--neutral-800);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 90%; /* 10% reduction from default 16px to 14.4px */
+}
+
+/* Typography Hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--neutral-900);
+}
+
+h1 {
+  font-size: clamp(1.8rem, 5vw, 3.15rem); /* 10% smaller */
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: clamp(1.575rem, 4vw, 2.25rem); /* 10% smaller */
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-size: clamp(1.35rem, 3vw, 1.8rem); /* 10% smaller */
+}
+
+/* Professional Components */
+.btn-primary {
+  @apply bg-[#2d5f3f] hover:bg-[#1e4029] text-white font-semibold rounded-lg px-5 py-2.5 
+         transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+}
+
+.btn-secondary {
+  @apply bg-[#d4a574] hover:bg-[#b8824d] text-white font-semibold rounded-lg px-5 py-2.5 
+         transition-all duration-300 shadow-md hover:shadow-lg;
+}
+
+.btn-outline {
+  @apply border-2 border-[#2d5f3f] text-[#2d5f3f] hover:bg-[#2d5f3f] hover:text-white 
+         font-semibold rounded-lg px-5 py-2.5 transition-all duration-300;
+}
+
+.btn-ghost {
+  @apply text-[#2d5f3f] hover:bg-[#f5f5f4] font-medium rounded-lg px-3.5 py-1.5 transition-colors;
+}
+
+.card {
+  @apply bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300;
+}
+
+.card-interactive {
+  @apply bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 
+         transform hover:-translate-y-1;
+}
+
+.badge-primary {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold 
+         bg-[#2d5f3f] text-white;
+}
+
+.badge-secondary {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold 
+         bg-[#d4a574] text-white;
+}
+
+.badge-outline {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold 
+         border-2 border-[#2d5f3f] text-[#2d5f3f];
+}
+
+/* Section Patterns */
+.section-hero {
+  @apply relative bg-gradient-to-br from-[#f5f5f4] via-white to-[#fafaf9] py-16 lg:py-28;
+}
+
+.section-light {
+  @apply bg-white py-14 lg:py-20;
+}
+
+.section-dark {
+  @apply bg-[#2d5f3f] text-white py-14 lg:py-20;
+}
+
+.section-accent {
+  @apply bg-gradient-to-br from-[#f5f5f4] to-[#e7e5e4] py-14 lg:py-20;
+}
+
+/* Container */
+.container-custom {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Trust Indicators */
+.trust-badge {
+  @apply inline-flex items-center gap-2 bg-white rounded-lg px-4 py-2 shadow-sm 
+         border border-[#e7e5e4];
+}
+
+/* Product Grid */
+.product-grid {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6;
+}
+
+/* Image Overlays */
+.image-overlay {
+  @apply absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent;
+}
+
+/* Focus States */
+*:focus-visible {
+  @apply outline-none ring-2 ring-[#2d5f3f] ring-offset-2 rounded;
+}
+
+/* Smooth Transitions */
+* {
+  @apply transition-colors duration-200;
+}

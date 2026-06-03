@@ -1,0 +1,68 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies & build
+node_modules
+dist
+dist-ssr
+*.local
+
+# ============================================
+# Secrets & environment (never commit)
+# ============================================
+.env
+.env.*
+!.env.example
+!EXAMPLE.env
+
+# Firebase local / debug
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*-debug.log
+
+# Service account & API key files
+**/firebase-adminsdk*.json
+**/serviceAccount*.json
+**/service-account*.json
+google-services.json
+GoogleService-Info.plist
+credentials.json
+secrets.json
+*credentials*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Hosting deploy tokens (local only)
+.vercel
+.vercel/
+
+# Test / coverage
+coverage
+.nyc_output
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Optional local tooling
+.cache
+*.tsbuildinfo
+.turbo
