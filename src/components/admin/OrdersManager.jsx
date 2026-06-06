@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Package, Search, Filter, Download, Eye, X, Calendar, DollarSign, User, MapPin, ShoppingBag, CheckCircle, XCircle, Clock, AlertCircle, Box, Truck } from 'lucide-react'
 import { getAllOrders } from '../../services/firebase-db'
-import { updateOrderStatus } from '../../services/ecwid-order-tracking'
+import { updateOrderStatus, checkTrackingStatus } from '../../services/order-tracking'
 
 function OrdersManager() {
   const [orders, setOrders] = useState([])
@@ -10,6 +10,7 @@ function OrdersManager() {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(null)
+  const [syncingTracking, setSyncingTracking] = useState(false)
 
   useEffect(() => {
     fetchOrders()
@@ -101,6 +102,24 @@ function OrdersManager() {
   }
 
 
+  const handleSyncTracking = async () => {
+    try {
+      setSyncingTracking(true)
+      const result = await checkTrackingStatus()
+      if (result.skipped) {
+        alert('ℹ️ Shiprocket is not configured yet.\n\nTracking sync will work once you add SHIPROCKET_API_EMAIL and SHIPROCKET_API_PASSWORD to your .env file.')
+        return
+      }
+      alert(`✅ Tracking sync complete\n\nChecked: ${result.checked} orders\nUpdated: ${result.updated}\nEmails sent: ${result.emailsSent}`)
+      await fetchOrders()
+    } catch (error) {
+      console.error('❌ Failed to sync tracking:', error)
+      alert(`❌ Failed to sync tracking: ${error.message}`)
+    } finally {
+      setSyncingTracking(false)
+    }
+  }
+
   const handleStatusUpdate = async (order, newStatus) => {
     // Don't update if status hasn't changed
     if (order.fulfillment_status === newStatus) {
@@ -123,14 +142,13 @@ function OrdersManager() {
       
       console.log('🔄 Updating order status:', {
         orderId: order.order_id,
-        ecwidOrderId: order.ecwid_order_id,
+        shiprocketOrderId: order.shiprocket_order_id,
         newStatus,
         trackingNumber
       })
       
       await updateOrderStatus(
         order.order_id,
-        order.ecwid_order_id,
         newStatus,
         trackingNumber
       )
@@ -143,13 +161,13 @@ function OrdersManager() {
         'DELIVERED': 'Delivered'
       }
       
-      alert(`✅ Order status updated to "${statusLabels[newStatus] || newStatus}"\n\n✅ Updated in Ecwid\n✅ Updated in database\n✅ Email sent to customer: ${order.shipping_address?.email || 'N/A'}`)
+      alert(`✅ Order status updated to "${statusLabels[newStatus] || newStatus}"\n\n✅ Updated in database\n✅ Email sent to customer: ${order.shipping_address?.email || 'N/A'}`)
       
       // Refresh orders list to show new status
       await fetchOrders()
     } catch (error) {
       console.error('❌ Failed to update status:', error)
-      alert(`❌ Failed to update status: ${error.message}\n\nPlease check:\n1. Backend server is running\n2. Ecwid credentials are correct\n3. App has update_orders scope`)
+      alert(`❌ Failed to update status: ${error.message}\n\nPlease check:\n1. Backend server is running\n2. Firebase Admin is configured`)
     } finally {
       setUpdatingStatus(null)
     }
@@ -346,6 +364,43 @@ function OrdersManager() {
               </div>
             </div>
 
+            {/* Shiprocket / Tracking */}
+            {(order.shiprocket_order_id || order.tracking_number) && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Truck size={18} />
+                  Shiprocket Delivery
+                </h4>
+                <div className="text-sm space-y-2">
+                  {order.shiprocket_order_id && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Shiprocket Order ID</span>
+                      <span className="font-medium text-gray-900 font-mono text-xs">{order.shiprocket_order_id}</span>
+                    </div>
+                  )}
+                  {order.shiprocket_shipment_id && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Shipment ID</span>
+                      <span className="font-medium text-gray-900 font-mono text-xs">{order.shiprocket_shipment_id}</span>
+                    </div>
+                  )}
+                  {order.tracking_number && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">AWB / Tracking</span>
+                      <a
+                        href={`https://shiprocket.co/tracking/${encodeURIComponent(order.tracking_number)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-emerald-600 hover:text-emerald-700 text-xs"
+                      >
+                        {order.tracking_number}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Delivery Info */}
             {order.delivery_info && (
               <div className="bg-gray-50 rounded-lg p-4">
@@ -436,6 +491,14 @@ function OrdersManager() {
           </div>
 
           <div className="flex gap-2 w-full md:w-auto">
+            <button
+              onClick={handleSyncTracking}
+              disabled={syncingTracking}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              <Truck size={18} />
+              {syncingTracking ? 'Syncing...' : 'Sync Tracking'}
+            </button>
             <button
               onClick={exportToCSV}
               className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"

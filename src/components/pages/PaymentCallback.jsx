@@ -5,7 +5,8 @@ import { useCart } from '../../contexts/CartContext'
 import { useCoupon } from '../../contexts/CouponContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { recordCouponUsage } from '../../services/coupon-service'
-import { pushOrderToEcwid } from '../../services/ecwid-integration'
+import { pushOrderToShiprocket } from '../../services/shiprocket-integration'
+import { updateOrderByOrderId } from '../../services/firebase-db'
 
 function PaymentCallback() {
   const navigate = useNavigate()
@@ -25,7 +26,7 @@ function PaymentCallback() {
         const deliv = deliveryInfo?.deliveryPrice || 0
         const couponDiscount = getDiscountAmount(getCartTotal())
 
-        // Prepare order data for both Supabase and Ecwid
+        // Prepare order data for Firebase and Shiprocket
         const orderData = {
           orderId,
           paymentId,
@@ -63,17 +64,27 @@ function PaymentCallback() {
           // Continue with email and invoice even if Supabase fails
         }
 
-        // Push order to Ecwid (fire-and-forget)
-        pushOrderToEcwid(orderData)
+        // Push order to Shiprocket (fire-and-forget)
+        pushOrderToShiprocket(orderData)
           .then(result => {
-            if (result.success) {
-              console.log('✅ CALLBACK: Order synced to Ecwid:', result)
+            if (result.success && result.shiprocketOrderId) {
+              console.log('✅ CALLBACK: Order synced to Shiprocket:', result)
+              const updates = {
+                shiprocket_order_id: result.shiprocketOrderId.toString(),
+                fulfillment_status: 'AWAITING_PROCESSING',
+              }
+              if (result.shipmentId) {
+                updates.shiprocket_shipment_id = result.shipmentId.toString()
+              }
+              updateOrderByOrderId(orderId, updates)
+            } else if (result.skipped) {
+              console.info('ℹ️ CALLBACK: Shiprocket not configured — order saved without delivery sync')
             } else {
-              console.warn('⚠️ CALLBACK: Failed to sync to Ecwid:', result.error)
+              console.warn('⚠️ CALLBACK: Failed to sync to Shiprocket:', result.error)
             }
           })
           .catch(error => {
-            console.error('❌ CALLBACK: Error syncing to Ecwid:', error)
+            console.warn('⚠️ CALLBACK: Shiprocket sync unavailable:', error.message)
           })
         // Build invoice HTML and trigger download
         try {

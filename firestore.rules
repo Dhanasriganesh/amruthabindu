@@ -75,9 +75,14 @@ service cloud.firestore {
           .hasOnly(['user_id', 'guest_email']);
     }
 
-    function ecwidFieldsOnlyUpdate() {
+    function shippingFieldsOnlyUpdate() {
       return request.resource.data.diff(resource.data).affectedKeys()
-        .hasOnly(['ecwid_order_id', 'fulfillment_status', 'tracking_number']);
+        .hasOnly([
+          'shiprocket_order_id',
+          'shiprocket_shipment_id',
+          'fulfillment_status',
+          'tracking_number'
+        ]);
     }
 
     // ─── Admin allowlist (synced from VITE_ADMIN_EMAILS on first admin login) ─
@@ -173,7 +178,7 @@ service cloud.firestore {
         || guestOrderLinkUpdate()
         || (
           (resource.data.user_id == null || orderBelongsToUser())
-          && ecwidFieldsOnlyUpdate()
+          && shippingFieldsOnlyUpdate()
         );
 
       allow delete: if isAdmin();

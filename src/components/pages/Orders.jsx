@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Package, Calendar, MapPin, CreditCard, ChevronRight, ShoppingBag, User } from 'lucide-react'
+import { Package, MapPin, ShoppingBag, User, Truck, ExternalLink } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { getOrdersByUserId, getGuestOrdersByEmail } from '../../services/firebase-db'
 
@@ -52,6 +52,30 @@ function Orders() {
 
   const formatPrice = (price) => {
     return `₹${Number(price).toFixed(2)}`
+  }
+
+  const getFulfillmentLabel = (status) => {
+    const labels = {
+      AWAITING_PROCESSING: 'Processing',
+      PACKED: 'Packed',
+      SHIPPED: 'Shipped',
+      OUT_FOR_DELIVERY: 'Out for Delivery',
+      DELIVERED: 'Delivered',
+      CANCELLED: 'Cancelled',
+    }
+    return labels[status] || 'Processing'
+  }
+
+  const getFulfillmentColor = (status) => {
+    const colors = {
+      AWAITING_PROCESSING: 'bg-gray-100 text-gray-700',
+      PACKED: 'bg-blue-100 text-blue-700',
+      SHIPPED: 'bg-purple-100 text-purple-700',
+      OUT_FOR_DELIVERY: 'bg-orange-100 text-orange-700',
+      DELIVERED: 'bg-green-100 text-green-700',
+      CANCELLED: 'bg-red-100 text-red-700',
+    }
+    return colors[status] || colors.AWAITING_PROCESSING
   }
 
   if (loading) {
@@ -177,6 +201,9 @@ function Orders() {
                             {formatPrice(totals.total || 0)}
                           </p>
                         </div>
+                        <span className={`text-xs font-medium px-2 py-1 rounded ${getFulfillmentColor(order.fulfillment_status || 'AWAITING_PROCESSING')}`}>
+                          {getFulfillmentLabel(order.fulfillment_status || 'AWAITING_PROCESSING')}
+                        </span>
                         <span className="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700">
                           {order.payment_method === 'cod' ? 'COD' : 'Paid'}
                         </span>
@@ -219,6 +246,33 @@ function Orders() {
                         </div>
                       ))}
                     </div>
+
+                    {/* Tracking */}
+                    {(order.tracking_number || order.shiprocket_order_id) && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="flex items-start gap-2">
+                          <Truck size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-xs font-medium text-gray-900 mb-1">Delivery Tracking</p>
+                            {order.tracking_number ? (
+                              <a
+                                href={`https://shiprocket.co/tracking/${encodeURIComponent(order.tracking_number)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700"
+                              >
+                                AWB: {order.tracking_number}
+                                <ExternalLink size={12} />
+                              </a>
+                            ) : (
+                              <p className="text-xs text-gray-600">
+                                Shipment created — tracking number will appear once dispatched
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Shipping Address */}
                     {shippingAddress && (shippingAddress.address || shippingAddress.city) && (

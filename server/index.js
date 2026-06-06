@@ -5,10 +5,10 @@ import sendOrderEmailHandler from '../api/send-order-email.js'
 import sendFailedPaymentEmailHandler from '../api/send-failed-payment-email.js'
 import sendLeadEmailHandler from '../api/send-lead-email.js'
 import sendBulkEmailHandler from '../api/send-bulk-email.js'
-import pushOrderToEcwidHandler from '../api/push-order-to-ecwid.js'
-import syncEcwidOrdersHandler from '../api/sync-ecwid-orders.js'
-import updateEcwidOrderStatusHandler from '../api/update-ecwid-order-status.js'
-import checkEcwidTrackingHandler from '../api/check-ecwid-tracking.js'
+import createRazorpayOrderHandler from '../api/razorpay/create-order.js'
+import pushOrderToShiprocketHandler from '../api/push-order-to-shiprocket.js'
+import updateOrderStatusHandler from '../api/update-order-status.js'
+import checkShiprocketTrackingHandler from '../api/check-shiprocket-tracking.js'
 
 // Load environment variables
 dotenv.config()
@@ -70,42 +70,42 @@ app.post('/api/send-bulk-email', async (req, res) => {
   }
 })
 
-app.post('/api/push-order-to-ecwid', async (req, res) => {
-  console.log('🌐 SERVER: Received request to /api/push-order-to-ecwid')
+app.post('/api/razorpay/create-order', async (req, res) => {
+  console.log('🌐 SERVER: Received request to /api/razorpay/create-order')
+  try {
+    await createRazorpayOrderHandler(req, res)
+  } catch (error) {
+    console.error('🌐 SERVER ERROR:', error)
+    res.status(500).json({ error: error.message || 'Internal server error' })
+  }
+})
+
+app.post('/api/push-order-to-shiprocket', async (req, res) => {
+  console.log('🌐 SERVER: Received request to /api/push-order-to-shiprocket')
   console.log('🌐 SERVER: Order ID:', req.body.orderId)
   try {
-    await pushOrderToEcwidHandler(req, res)
+    await pushOrderToShiprocketHandler(req, res)
   } catch (error) {
     console.error('🌐 SERVER ERROR:', error)
     res.status(500).json({ error: error.message || 'Internal server error' })
   }
 })
 
-app.post('/api/sync-ecwid-orders', async (req, res) => {
-  console.log('🌐 SERVER: Received request to /api/sync-ecwid-orders')
-  try {
-    await syncEcwidOrdersHandler(req, res)
-  } catch (error) {
-    console.error('🌐 SERVER ERROR:', error)
-    res.status(500).json({ error: error.message || 'Internal server error' })
-  }
-})
-
-app.post('/api/update-ecwid-order-status', async (req, res) => {
-  console.log('🌐 SERVER: Received request to /api/update-ecwid-order-status')
+app.post('/api/update-order-status', async (req, res) => {
+  console.log('🌐 SERVER: Received request to /api/update-order-status')
   console.log('🌐 SERVER: Order ID:', req.body.orderId, 'Status:', req.body.status)
   try {
-    await updateEcwidOrderStatusHandler(req, res)
+    await updateOrderStatusHandler(req, res)
   } catch (error) {
     console.error('🌐 SERVER ERROR:', error)
     res.status(500).json({ error: error.message || 'Internal server error' })
   }
 })
 
-app.post('/api/check-ecwid-tracking', async (req, res) => {
-  console.log('🌐 SERVER: Received request to /api/check-ecwid-tracking')
+app.post('/api/check-shiprocket-tracking', async (req, res) => {
+  console.log('🌐 SERVER: Received request to /api/check-shiprocket-tracking')
   try {
-    await checkEcwidTrackingHandler(req, res)
+    await checkShiprocketTrackingHandler(req, res)
   } catch (error) {
     console.error('🌐 SERVER ERROR:', error)
     res.status(500).json({ error: error.message || 'Internal server error' })

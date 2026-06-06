@@ -60,8 +60,11 @@ export async function saveOrder(order) {
     created_at: new Date().toISOString(),
   }
 
-  if (order.ecwidOrderId !== undefined) {
-    sanitizedOrder.ecwid_order_id = order.ecwidOrderId
+  if (order.shiprocketOrderId !== undefined) {
+    sanitizedOrder.shiprocket_order_id = order.shiprocketOrderId
+  }
+  if (order.shiprocketShipmentId !== undefined) {
+    sanitizedOrder.shiprocket_shipment_id = order.shiprocketShipmentId
   }
   if (order.fulfillmentStatus !== undefined) {
     sanitizedOrder.fulfillment_status = order.fulfillmentStatus || 'AWAITING_PROCESSING'

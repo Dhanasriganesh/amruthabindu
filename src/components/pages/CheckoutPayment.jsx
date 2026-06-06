@@ -6,7 +6,7 @@ import { useCoupon } from '../../contexts/CouponContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { saveOrder } from '../../services/db'
 import { recordCouponUsage } from '../../services/coupon-service'
-import { pushOrderToEcwid, recordFailedPaymentInEcwid } from '../../services/ecwid-integration'
+import { pushOrderToShiprocket } from '../../services/shiprocket-integration'
 import { updateOrderByOrderId } from '../../services/firebase-db'
 
 function CheckoutPayment() {
@@ -185,10 +185,25 @@ function CheckoutPayment() {
       const ok = await loadRazorpayScript()
       if (!ok) throw new Error('Razorpay SDK failed to load')
 
+      // Create order server-side (recommended Razorpay flow)
+      const orderRes = await fetch('/api/razorpay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt, receipt: `order_${Date.now()}` }),
+      })
+
+      if (!orderRes.ok) {
+        const err = await orderRes.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to create payment order. Is the backend server running on port 3001?')
+      }
+
+      const { orderId: razorpayOrderId } = await orderRes.json()
+
       const options = {
         key: RZP_KEY_ID,
         amount: amt,
         currency: 'INR',
+        order_id: razorpayOrderId,
         name: 'Amrutha Bindu',
         description: 'Order Payment',
         prefill: shippingAddress ? {
@@ -213,11 +228,20 @@ function CheckoutPayment() {
 
       const rzp = new window.Razorpay(options)
       rzp.on('payment.failed', function (resp) {
+        console.error('Razorpay payment.failed:', resp?.error)
         const desc = resp?.error?.description || ''
-        const errorMsg = desc || resp?.error?.reason || 'Payment failed. Please try again.'
-        
+        const reason = resp?.error?.reason || ''
+        const errorMsg = desc || reason || 'Payment failed. Please try again.'
+
         if (desc.toLowerCase().includes('international cards are not supported')) {
-          alert('International cards are disabled on this account. Please use the domestic test card 4111 1111 1111 1111 (CVV 123, any future expiry) or enable international cards in Razorpay dashboard.')
+          alert(
+            'Card rejected by Razorpay (flagged as international).\n\n' +
+            'Try these test options:\n' +
+            '1. Netbanking — pick any bank, then click Success on the test page (easiest)\n' +
+            '2. Mastercard domestic: 5267 3181 8797 5449, CVV 123, any future expiry\n' +
+            '3. Visa domestic: 4111 1111 1111 1111 (no spaces), CVV 123\n\n' +
+            'Or in Razorpay Dashboard → Account & Settings → International Payments → enable temporarily for testing.'
+          )
         } else {
           alert(errorMsg)
         }
@@ -306,19 +330,6 @@ function CheckoutPayment() {
       console.error('Error details:', error.message)
     }
 
-    // Record failed payment in Ecwid (fire-and-forget)
-    recordFailedPaymentInEcwid(failedOrderData)
-      .then(result => {
-        if (result.success) {
-          console.log('✅ Failed payment recorded in Ecwid:', result)
-        } else {
-          console.warn('⚠️ Failed to record failed payment in Ecwid:', result.error)
-        }
-      })
-      .catch(error => {
-        console.error('❌ Error recording failed payment in Ecwid:', error)
-      })
-    
     try {
       console.log('📧 CLIENT: Starting failed payment email process...')
       
@@ -388,7 +399,7 @@ function CheckoutPayment() {
 
     const couponDiscount = getDiscountAmount(getCartTotal())
     
-    // Prepare order data for both Supabase and Ecwid
+    // Prepare order data for Firebase and Shiprocket
     const orderData = {
       orderId,
       paymentId: response.razorpay_payment_id,
@@ -426,40 +437,43 @@ function CheckoutPayment() {
       // Continue with email and invoice even if Firebase fails
     }
 
-    // Push order to Ecwid automatically (runs in background)
-    // This sends the order to Ecwid so you can track it there
-    console.log('📦 Auto-sending order to Ecwid...')
-    pushOrderToEcwid(orderData)
+    // Push order to Shiprocket automatically (runs in background)
+    console.log('📦 Auto-sending order to Shiprocket...')
+    pushOrderToShiprocket(orderData)
       .then(result => {
-        if (result.success && result.ecwidOrderId) {
-          console.log('✅ Order sent to Ecwid successfully!')
-          console.log('   Ecwid Order ID:', result.ecwidOrderId)
-          console.log('   Order Number:', result.orderNumber)
-          
-          updateOrderByOrderId(orderId, {
-            ecwid_order_id: result.ecwidOrderId.toString(),
+        if (result.success && result.shiprocketOrderId) {
+          console.log('✅ Order sent to Shiprocket successfully!')
+          console.log('   Shiprocket Order ID:', result.shiprocketOrderId)
+          console.log('   Shipment ID:', result.shipmentId)
+
+          const updates = {
+            shiprocket_order_id: result.shiprocketOrderId.toString(),
             fulfillment_status: 'AWAITING_PROCESSING',
-          }).then(({ error }) => {
+          }
+          if (result.shipmentId) {
+            updates.shiprocket_shipment_id = result.shipmentId.toString()
+          }
+
+          updateOrderByOrderId(orderId, updates).then(({ error }) => {
             if (error) {
-              console.error('⚠️ Failed to update order with Ecwid ID:', error)
+              console.error('⚠️ Failed to update order with Shiprocket ID:', error)
             } else {
-              console.log('✅ Order linked to Ecwid for tracking')
+              console.log('✅ Order linked to Shiprocket for delivery tracking')
             }
           })
-          
-          // Refresh orders list if on admin panel
+
           if (window.location.pathname.includes('/admin')) {
             window.dispatchEvent(new Event('ordersUpdated'))
           }
+        } else if (result.skipped) {
+          console.info('ℹ️ Shiprocket not configured — order saved without delivery sync')
         } else {
-          console.warn('⚠️ Order not sent to Ecwid:', result.error)
+          console.warn('⚠️ Order not sent to Shiprocket:', result.error)
           console.warn('   Order is saved in your database')
-          console.warn('   Restart backend server if you just updated tokens')
         }
       })
       .catch(error => {
-        console.error('❌ Error sending order to Ecwid:', error)
-        console.error('   Order is saved in your database')
+        console.warn('⚠️ Shiprocket sync unavailable:', error.message)
       })
 
     // Generate invoice and trigger download
@@ -584,6 +598,9 @@ function CheckoutPayment() {
                     <ul className="text-sm text-green-800 space-y-1">
                       <li>• Encrypted payment via Razorpay</li>
                       <li>• We never store your payment details</li>
+                      {RZP_KEY_ID.startsWith('rzp_test_') && (
+                        <li>• Test mode: use <strong>Netbanking</strong> (pick any bank → Success) if cards fail</li>
+                      )}
                     </ul>
                   </div>
                 </div>

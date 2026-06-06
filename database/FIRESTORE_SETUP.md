@@ -7,7 +7,7 @@ Create a Firebase project and enable **Authentication** (Email/Password), **Fire
 | Collection | Document ID | Fields |
 |------------|-------------|--------|
 | `cms` | `products`, `homeContent`, `headerContent` | `data`, `lastUpdated`, `updatedBy` |
-| `orders` | auto | `order_id`, `payment_id`, `items`, `totals`, `shipping_address`, `guest_email`, `user_id`, `ecwid_order_id`, `fulfillment_status`, `created_at` |
+| `orders` | auto | `order_id`, `payment_id`, `items`, `totals`, `shipping_address`, `guest_email`, `user_id`, `shiprocket_order_id`, `shiprocket_shipment_id`, `tracking_number`, `fulfillment_status`, `created_at` |
 | `contact_messages` | auto | `name`, `email`, `phone`, `subject`, `message`, `created_at` |
 | `user_carts` | `{userId}` | `user_id`, `items`, `updated_at` |
 | `user_favorites` | `{userId}_{productId}` | `user_id`, `product_id`, `created_at` |
