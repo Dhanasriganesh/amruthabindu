@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -8,9 +8,15 @@ import {
   ShoppingCart,
   Heart,
   ChevronDown,
+  ChevronRight,
   LogOut,
   Package,
-  Phone,
+  Search,
+  Home,
+  ShoppingBag,
+  Cookie,
+  Leaf,
+  Info,
   Mail,
   ArrowRight,
 } from 'lucide-react'
@@ -25,6 +31,54 @@ import {
   readHeaderContentCache,
 } from '../../utils/headerContent'
 
+const MOBILE_MENU_ITEMS = [
+  { name: 'Home', href: '/', icon: Home },
+  { name: 'Shop', href: '/shop', icon: ShoppingBag },
+  { name: 'Foods', href: '/shop/foods', icon: Cookie },
+  { name: 'Naturals', href: '/shop/naturals', icon: Leaf },
+  { name: 'Track Order', href: '/orders', icon: Package },
+  { name: 'About', href: '/about', icon: Info },
+  { name: 'Contact Us', href: '/contact', icon: Mail },
+]
+
+const menuPanelVariants = {
+  hidden: { opacity: 0, y: -12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    transition: { duration: 0.22, ease: [0.4, 0, 0.2, 1] },
+  },
+}
+
+const menuContentVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.06, delayChildren: 0.12 },
+  },
+  exit: {
+    transition: { staggerChildren: 0.04, staggerDirection: -1 },
+  },
+}
+
+const menuItemVariants = {
+  hidden: { opacity: 0, x: 24 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { type: 'spring', stiffness: 400, damping: 32 },
+  },
+  exit: {
+    opacity: 0,
+    x: 16,
+    transition: { duration: 0.18 },
+  },
+}
+
 function isNavActive(pathname, href) {
   if (href === '/home' || href === '/') {
     return pathname === '/' || pathname === '/home'
@@ -36,10 +90,12 @@ function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState(null)
   const [showUserDropdown, setShowUserDropdown] = useState(false)
+  const [mobileSearch, setMobileSearch] = useState('')
   const [scrolled, setScrolled] = useState(false)
   const [headerData, setHeaderData] = useState(DEFAULT_HEADER)
   const location = useLocation()
   const navigate = useNavigate()
+  const searchInputRef = useRef(null)
   const { getCartItemsCount } = useCart()
   const { currentUser, logout } = useAuth()
   const { getDisplayName } = useUser()
@@ -95,6 +151,7 @@ function Header() {
     setIsMenuOpen(false)
     setOpenDropdown(null)
     setShowUserDropdown(false)
+    setMobileSearch('')
   }, [location.pathname])
 
   useEffect(() => {
@@ -103,6 +160,20 @@ function Header() {
       document.body.style.overflow = ''
     }
   }, [isMenuOpen])
+
+  const openMobileMenu = (focusSearch = false) => {
+    setIsMenuOpen(true)
+    if (focusSearch) {
+      setTimeout(() => searchInputRef.current?.focus(), 280)
+    }
+  }
+
+  const handleMobileSearch = (e) => {
+    e.preventDefault()
+    const query = mobileSearch.trim()
+    setIsMenuOpen(false)
+    navigate(query ? `/shop?q=${encodeURIComponent(query)}` : '/shop')
+  }
 
   const handleLogout = async () => {
     try {
@@ -118,33 +189,76 @@ function Header() {
   return (
     <>
       <header
-        className={`site-header font-body-premium ${scrolled ? 'site-header--scrolled' : 'site-header--top'}`}
+        className={`site-header font-body-premium ${scrolled ? 'site-header--scrolled' : 'site-header--top'} ${isMenuOpen ? 'site-header--menu-open' : ''}`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-between h-[4.5rem] sm:h-[5rem] lg:h-[5.5rem]">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 sm:gap-4 group z-10 shrink-0">
-              <div className="relative">
+        {/* Mobile — floating pill bar */}
+        <div className="site-header__mobile lg:hidden">
+          <div className="site-header__mobile-pill">
+            <button
+              type="button"
+              onClick={() => openMobileMenu(false)}
+              className="site-header__mobile-icon"
+              aria-label="Open menu"
+              aria-expanded={isMenuOpen}
+            >
+              <Menu size={22} strokeWidth={1.75} />
+            </button>
+
+            <Link to="/" className="site-header__mobile-logo-link" aria-label={siteName}>
+              <img src={logo} alt={siteName} className="site-header__mobile-logo" />
+            </Link>
+
+            <div className="site-header__mobile-actions">
+              <button
+                type="button"
+                onClick={() => openMobileMenu(true)}
+                className="site-header__mobile-icon"
+                aria-label="Search products"
+              >
+                <Search size={20} strokeWidth={1.75} />
+              </button>
+
+              <Link
+                to={currentUser ? '/account' : '/login'}
+                className="site-header__mobile-icon"
+                aria-label={currentUser ? 'Account' : 'Sign in'}
+              >
+                {currentUser && initials ? (
+                  <span className="text-[10px] font-bold">{initials}</span>
+                ) : (
+                  <User size={20} strokeWidth={1.75} />
+                )}
+              </Link>
+
+              <Link to="/cart" className="site-header__mobile-icon relative" aria-label="Cart">
+                <ShoppingCart size={20} strokeWidth={1.75} />
+                {cartCount > 0 && <span className="site-header__cart-badge">{cartCount}</span>}
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop */}
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 site-header__container hidden lg:block">
+          <div className="relative flex items-center justify-between gap-2 site-header__bar">
+            <Link to="/" className="flex items-center gap-4 group z-10 shrink-0">
+              <div className="relative shrink-0">
                 <img
                   src={logo}
                   alt={siteName}
                   className="site-header__logo-img transition-transform duration-300 group-hover:scale-105"
                 />
-                <span className="absolute -inset-1 rounded-full bg-black/5 scale-0 group-hover:scale-100 transition-transform duration-300 -z-10" />
               </div>
-              <div className="hidden sm:block leading-tight">
-                <span className="font-display text-lg sm:text-xl text-black tracking-tight block">
-                  {siteName}
-                </span>
-                <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-black/70 font-medium">
+              <div className="leading-tight">
+                <span className="font-display text-xl text-black tracking-tight block">{siteName}</span>
+                <span className="text-[11px] uppercase tracking-[0.22em] text-black/70 font-medium">
                   {tagline}
                 </span>
               </div>
             </Link>
 
-            {/* Center nav — desktop */}
             <nav
-              className="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center"
+              className="absolute left-1/2 -translate-x-1/2 flex items-center"
               aria-label="Main navigation"
             >
               <div className="site-header__nav-pill">
@@ -183,9 +297,7 @@ function Header() {
                           onMouseEnter={() => setOpenDropdown(item.name)}
                           onMouseLeave={() => setOpenDropdown(null)}
                         >
-                          <p className="site-header__mega-label px-3 pb-2 mb-1">
-                            Collections
-                          </p>
+                          <p className="site-header__mega-label px-3 pb-2 mb-1">Collections</p>
                           <div className="grid grid-cols-1 gap-0.5">
                             {item.submenu.map((sub) => (
                               <Link
@@ -209,26 +321,21 @@ function Header() {
               </div>
             </nav>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 sm:gap-2.5 z-10">
+            <div className="flex items-center gap-2.5 z-10 shrink-0">
               <Link to="/shop" className="site-header__cta-shop">
                 Shop <ArrowRight size={14} />
               </Link>
-
-              <Link to="/favorites" className="site-header__icon-btn hidden sm:flex" aria-label="Favorites">
+              <Link to="/favorites" className="site-header__icon-btn" aria-label="Favorites">
                 <Heart size={18} strokeWidth={1.75} />
               </Link>
-
               <Link to="/cart" className="site-header__icon-btn relative" aria-label="Cart">
                 <ShoppingCart size={18} strokeWidth={1.75} />
-                {cartCount > 0 && (
-                  <span className="site-header__cart-badge">{cartCount}</span>
-                )}
+                {cartCount > 0 && <span className="site-header__cart-badge">{cartCount}</span>}
               </Link>
 
               {currentUser ? (
                 <div
-                  className="relative hidden lg:block"
+                  className="relative"
                   onMouseEnter={() => setShowUserDropdown(true)}
                   onMouseLeave={() => setShowUserDropdown(false)}
                 >
@@ -279,129 +386,101 @@ function Header() {
                   </AnimatePresence>
                 </div>
               ) : (
-                <Link
-                  to="/login"
-                  className="site-header__icon-btn hidden lg:flex"
-                  aria-label="Sign in"
-                >
+                <Link to="/login" className="site-header__icon-btn" aria-label="Sign in">
                   <User size={18} strokeWidth={1.75} />
                 </Link>
               )}
-
-              <button
-                type="button"
-                onClick={() => setIsMenuOpen(true)}
-                className="site-header__icon-btn lg:hidden"
-                aria-label="Open menu"
-              >
-                <Menu size={20} />
-              </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Mobile drawer */}
+      {/* Mobile full-screen menu */}
       <AnimatePresence>
         {isMenuOpen && (
-          <>
-            <motion.button
-              type="button"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="site-header__overlay lg:hidden"
-              aria-label="Close menu"
-              onClick={() => setIsMenuOpen(false)}
-            />
             <motion.aside
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="site-header__drawer lg:hidden"
+              variants={menuPanelVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="site-header__mobile-menu lg:hidden"
             >
-              <div className="flex items-center justify-between p-5 border-b border-stone-200/80">
-                <Link to="/" className="flex items-center gap-3" onClick={() => setIsMenuOpen(false)}>
-                  <img src={logo} alt="" className="h-12 w-12 sm:h-14 sm:w-14 object-contain" />
-                  <span className="font-display text-lg text-black">{siteName}</span>
-                </Link>
+              <div className="site-header__mobile-menu-header">
+                <div className="site-header__mobile-menu-header-spacer" aria-hidden="true" />
+                <img src={logo} alt={siteName} className="site-header__mobile-menu-logo" />
                 <button
                   type="button"
                   onClick={() => setIsMenuOpen(false)}
-                  className="site-header__icon-btn"
-                  aria-label="Close"
+                  className="site-header__mobile-menu-close"
+                  aria-label="Close menu"
                 >
-                  <X size={20} />
+                  <X size={22} strokeWidth={1.75} />
                 </button>
               </div>
 
-              <nav className="p-6" aria-label="Mobile navigation">
-                {navigation.map((item) => (
-                  <div key={item.name}>
-                    <Link
-                      to={item.href}
-                      className={`site-header__drawer-link ${
-                        isNavActive(location.pathname, item.href) ? 'site-header__drawer-link--active' : ''
-                      }`}
-                      onClick={() => !item.submenu?.length && setIsMenuOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
-                    {item.submenu?.length > 0 && (
-                      <div className="pl-4 pb-4 space-y-2">
-                        {item.submenu.map((sub) => (
-                          <Link
-                            key={sub.name}
-                            to={sub.href}
-                            className="block text-sm text-black/80 hover:text-black font-body-premium py-1"
-                            onClick={() => setIsMenuOpen(false)}
-                          >
-                            {sub.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </nav>
-
-              <div className="px-6 pb-8 space-y-4">
-                <Link
-                  to="/shop"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full py-4 rounded-full bg-black text-white font-semibold"
+              <motion.div
+                className="site-header__mobile-menu-inner"
+                variants={menuContentVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <motion.form
+                  onSubmit={handleMobileSearch}
+                  className="site-header__mobile-search"
+                  variants={menuItemVariants}
                 >
-                  Shop now <ArrowRight size={18} />
-                </Link>
+                  <Search size={16} strokeWidth={1.5} className="site-header__mobile-search-icon" />
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    value={mobileSearch}
+                    onChange={(e) => setMobileSearch(e.target.value)}
+                    placeholder="Search natural products..."
+                    className="site-header__mobile-search-input"
+                  />
+                </motion.form>
 
-                <div className="flex gap-3 pt-4 border-t border-stone-200/80">
-                  <a
-                    href="tel:+917337334653"
-                    className="flex items-center gap-2 text-sm text-black"
-                  >
-                    <Phone size={16} /> Call
-                  </a>
-                  <a
-                    href="mailto:contact@amruthabindu.in"
-                    className="flex items-center gap-2 text-sm text-black"
-                  >
-                    <Mail size={16} /> Email
-                  </a>
-                </div>
+                <motion.nav
+                  className="site-header__mobile-nav"
+                  aria-label="Mobile navigation"
+                  variants={menuContentVariants}
+                >
+                  {MOBILE_MENU_ITEMS.map((item) => {
+                    const Icon = item.icon
+                    const active = isNavActive(location.pathname, item.href)
+                    return (
+                      <motion.div key={item.name} variants={menuItemVariants}>
+                        <Link
+                          to={item.href}
+                          onClick={() => setIsMenuOpen(false)}
+                          className={`site-header__mobile-nav-item ${active ? 'site-header__mobile-nav-item--active' : ''}`}
+                        >
+                          <span className="site-header__mobile-nav-icon">
+                            <Icon size={17} strokeWidth={1.5} />
+                          </span>
+                          <span className="site-header__mobile-nav-label">{item.name}</span>
+                          <ChevronRight size={15} strokeWidth={1.75} className="site-header__mobile-nav-chevron" />
+                        </Link>
+                      </motion.div>
+                    )
+                  })}
+                </motion.nav>
 
-                {!currentUser && (
-                  <Link
-                    to="/login"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="block text-center text-sm font-semibold text-black"
-                  >
-                    Sign in
-                  </Link>
-                )}
-              </div>
+                <motion.div className="site-header__mobile-promo" variants={menuItemVariants}>
+                  <p className="site-header__mobile-promo-title">Pure. Rooted. Trusted.</p>
+                  <p className="site-header__mobile-promo-text">
+                    Crafted with nature. Delivered with care.
+                  </p>
+                  <Leaf
+                    size={56}
+                    strokeWidth={1}
+                    className="site-header__mobile-promo-leaf"
+                    aria-hidden="true"
+                  />
+                </motion.div>
+              </motion.div>
             </motion.aside>
-          </>
         )}
       </AnimatePresence>
     </>
