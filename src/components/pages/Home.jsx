@@ -1,7 +1,14 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useCart } from '../../contexts/CartContext'
 import { fetchProducts } from '../../services/products'
-import { fetchHeroSlides } from '../../services/heroSlides'
+import { fetchHeroSlides, HERO_SLIDES_UPDATED_EVENT } from '../../services/heroSlides'
+import { loadHomeContent } from '../../services/cms'
+import {
+  DEFAULT_HOME_CONTENT,
+  HOME_CONTENT_UPDATED_EVENT,
+  mergeHomeContent,
+  readHomeContentCache,
+} from '../../utils/homeContent'
 import HeroCarousel from '../HeroCarousel'
 import { MarqueeSection } from '../home/sections/MarqueeSection'
 import { ManifestoSection } from '../home/sections/ManifestoSection'
@@ -26,6 +33,18 @@ function Home() {
   const [newsletterSuccess, setNewsletterSuccess] = useState(false)
   const [featuredProducts, setFeaturedProducts] = useState([])
   const [heroSlides, setHeroSlides] = useState([])
+  const [homeContent, setHomeContent] = useState(DEFAULT_HOME_CONTENT)
+
+  const refreshHomeContent = useCallback(async () => {
+    const cached = readHomeContentCache()
+    if (cached) setHomeContent(cached)
+    try {
+      const content = await loadHomeContent()
+      if (content) setHomeContent(mergeHomeContent(content))
+    } catch (error) {
+      console.error('Failed to load home content:', error)
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -44,16 +63,28 @@ function Home() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-    async function loadSlides() {
-      const slides = await fetchHeroSlides()
-      if (!cancelled) setHeroSlides(slides)
-    }
-    loadSlides()
-    return () => {
-      cancelled = true
-    }
+    refreshHomeContent()
+    const onUpdated = () => refreshHomeContent()
+    window.addEventListener(HOME_CONTENT_UPDATED_EVENT, onUpdated)
+    return () => window.removeEventListener(HOME_CONTENT_UPDATED_EVENT, onUpdated)
+  }, [refreshHomeContent])
+
+  const refreshHeroSlides = useCallback(async () => {
+    const slides = await fetchHeroSlides()
+    setHeroSlides(slides)
   }, [])
+
+  useEffect(() => {
+    refreshHeroSlides()
+    const onUpdated = () => refreshHeroSlides()
+    const onFocus = () => refreshHeroSlides()
+    window.addEventListener(HERO_SLIDES_UPDATED_EVENT, onUpdated)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      window.removeEventListener(HERO_SLIDES_UPDATED_EVENT, onUpdated)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [refreshHeroSlides])
 
   const handleAddToCart = (product) => {
     const selectedSize = selectedSizes[product.id] || product.sizes[0].size
@@ -87,10 +118,14 @@ function Home() {
     <div className="home-page min-h-screen">
       <HeroCarousel slides={heroSlides} />
       <MarqueeSection />
-      <ManifestoSection />
-      <FeaturesSection />
-      <CategoriesSection />
+      <ManifestoSection content={homeContent.manifesto} />
+      <FeaturesSection
+        heading={homeContent.featuresHeading}
+        features={homeContent.features}
+      />
+      <CategoriesSection categories={homeContent.categories} />
       <ProductsSection
+        heading={homeContent.productsHeading}
         products={featuredProducts}
         selectedSizes={selectedSizes}
         favorites={favorites}
@@ -98,8 +133,12 @@ function Home() {
         onAddToCart={handleAddToCart}
         onToggleFavorite={toggleFavorite}
       />
-      <TestimonialsSection />
+      <TestimonialsSection
+        heading={homeContent.testimonialsHeading}
+        testimonials={homeContent.testimonials}
+      />
       <NewsletterSection
+        content={homeContent.newsletter}
         email={newsletterEmail}
         onEmailChange={(e) => setNewsletterEmail(e.target.value)}
         onSubmit={handleNewsletterSubmit}

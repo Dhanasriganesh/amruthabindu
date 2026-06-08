@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2, Eye, EyeOff, Save, X, MoveUp, MoveDown, Image as ImageIcon } from 'lucide-react'
-import { fetchAllHeroSlides, addHeroSlide, updateHeroSlide, deleteHeroSlide, toggleSlideActive } from '../../services/heroSlides'
+import {
+  fetchAllHeroSlides,
+  addHeroSlide,
+  updateHeroSlide,
+  deleteHeroSlide,
+  toggleSlideActive,
+  isPlaceholderSlideId,
+} from '../../services/heroSlides'
 
 function HeroSlidesManager() {
   const [slides, setSlides] = useState([])
@@ -96,12 +103,17 @@ function HeroSlidesManager() {
       return
     }
 
-    const result = isAddingNew
+    const creatingSlide = isAddingNew || isPlaceholderSlideId(editingSlide)
+    const result = creatingSlide
       ? await addHeroSlide(formData)
       : await updateHeroSlide(editingSlide, formData)
 
     if (result.success) {
-      alert(isAddingNew ? 'Slide added successfully!' : 'Slide updated successfully!')
+      alert(
+        creatingSlide
+          ? 'Slide saved to database successfully!'
+          : 'Slide updated successfully!'
+      )
       cancelEdit()
       loadSlides()
     } else {

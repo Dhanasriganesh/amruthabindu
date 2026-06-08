@@ -23,6 +23,14 @@ function guestEmailFromOrder(order) {
   return order?.shipping_address?.email || order?.guest_email || null
 }
 
+function sortOrdersByDateDesc(orders) {
+  return [...orders].sort((a, b) => {
+    const aTime = new Date(a.created_at || 0).getTime()
+    const bTime = new Date(b.created_at || 0).getTime()
+    return bTime - aTime
+  })
+}
+
 // ==================== CONTACTS ====================
 
 export async function saveContactMessage(message) {
@@ -106,27 +114,19 @@ export async function getAllOrders() {
 export async function getOrdersByUserId(userId) {
   if (!db || !userId) return []
 
-  const q = query(
-    collection(db, 'orders'),
-    where('user_id', '==', userId),
-    orderBy('created_at', 'desc')
-  )
+  const q = query(collection(db, 'orders'), where('user_id', '==', userId))
   const snap = await getDocs(q)
-  return snap.docs.map(docWithId)
+  return sortOrdersByDateDesc(snap.docs.map(docWithId))
 }
 
 export async function getGuestOrdersByEmail(email) {
   if (!db || !email) return []
 
-  const q = query(
-    collection(db, 'orders'),
-    where('guest_email', '==', email),
-    orderBy('created_at', 'desc')
-  )
+  const q = query(collection(db, 'orders'), where('guest_email', '==', email))
   const snap = await getDocs(q)
-  return snap.docs
-    .map(docWithId)
-    .filter((o) => !o.user_id)
+  return sortOrdersByDateDesc(
+    snap.docs.map(docWithId).filter((o) => !o.user_id)
+  )
 }
 
 // ==================== USER CART ====================

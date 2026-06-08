@@ -45,9 +45,14 @@ export async function ensureAdminFirestoreAccess(user) {
   }
 }
 
+function isPermissionDenied(error) {
+  return error?.code === 'permission-denied'
+}
+
 /**
  * Returns true if the Firebase user is allowed to access the admin panel.
- * Checks VITE_ADMIN_EMAILS first, then Firestore collection `admins`.
+ * Checks VITE_ADMIN_EMAILS first, then Firestore `admins/{uid}` and `config/adminAccess`.
+ * Only reads paths allowed by firestore.rules for the signed-in user (avoids permission errors).
  */
 export async function isAdminUser(user) {
   if (!user?.email) return false
@@ -59,24 +64,28 @@ export async function isAdminUser(user) {
     return true
   }
 
-  if (!db || !isFirebaseConfigured()) {
+  if (!db || !isFirebaseConfigured() || !user.uid) {
     return false
   }
 
   try {
-    const byEmail = await getDoc(doc(db, 'admins', emailDocId(email)))
-    if (byEmail.exists() && byEmail.data()?.active !== false) {
+    const byUid = await getDoc(doc(db, 'admins', user.uid))
+    if (byUid.exists() && byUid.data()?.active !== false) {
       return true
     }
 
-    if (user.uid) {
-      const byUid = await getDoc(doc(db, 'admins', user.uid))
-      if (byUid.exists() && byUid.data()?.active !== false) {
+    const configSnap = await getDoc(doc(db, 'config', 'adminAccess'))
+    const allowlist = configSnap.data()?.adminEmails
+    if (Array.isArray(allowlist)) {
+      const normalized = allowlist.map((e) => String(e).trim().toLowerCase())
+      if (normalized.includes(email)) {
         return true
       }
     }
   } catch (error) {
-    console.error('Error checking admin access:', error)
+    if (!isPermissionDenied(error)) {
+      console.error('Error checking admin access:', error)
+    }
   }
 
   return false

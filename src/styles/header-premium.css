@@ -230,20 +230,21 @@
 
 .site-header__logo-img {
   height: 3.5rem;
-  width: 3.5rem;
+  width: auto;
+  max-height: 3.5rem;
   object-fit: contain;
 }
 
 @media (min-width: 640px) {
   .site-header__logo-img {
     height: 4.25rem;
-    width: 4.25rem;
+    max-height: 4.25rem;
   }
 }
 
 @media (min-width: 1024px) {
   .site-header__logo-img {
     height: 4.75rem;
-    width: 4.75rem;
+    max-height: 4.75rem;
   }
 }

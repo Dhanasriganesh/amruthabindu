@@ -7,6 +7,7 @@ import {
   updateProfile,
 } from 'firebase/auth'
 import { auth, isFirebaseConfigured } from '../lib/firebase'
+import { getEnvAdminEmails, isAdminUser } from '../services/admin-auth'
 
 const AuthContext = createContext(null)
 
@@ -32,8 +33,15 @@ export function AuthProvider({ children }) {
       return undefined
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(normalizeUser(user))
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setCurrentUser(null)
+        setLoading(false)
+        return
+      }
+
+      const admin = await isAdminUser(user)
+      setCurrentUser(admin ? null : normalizeUser(user))
       setLoading(false)
     })
 
@@ -42,6 +50,11 @@ export function AuthProvider({ children }) {
 
   const signup = async (email, password, displayName) => {
     if (!auth) throw new Error('Firebase auth is not configured')
+
+    const normalizedEmail = email.trim().toLowerCase()
+    if (getEnvAdminEmails().includes(normalizedEmail)) {
+      throw new Error('This email is reserved for admin access. Please use a different email.')
+    }
 
     const { user } = await createUserWithEmailAndPassword(auth, email, password)
 
@@ -86,6 +99,12 @@ export function AuthProvider({ children }) {
     if (!auth) throw new Error('Firebase auth is not configured')
 
     const { user } = await signInWithEmailAndPassword(auth, email, password)
+
+    if (await isAdminUser(user)) {
+      await firebaseSignOut(auth)
+      throw new Error('This account is for admin access only. Please sign in at /admin.')
+    }
+
     const normalized = normalizeUser(user)
 
     try {

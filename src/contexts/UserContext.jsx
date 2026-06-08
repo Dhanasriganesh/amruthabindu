@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { updateProfile } from 'firebase/auth'
 import { useAuth } from './AuthContext'
 import { auth } from '../lib/firebase'
+import { getEnvAdminEmails } from '../services/admin-auth'
 
 const UserContext = createContext()
 
@@ -27,7 +28,13 @@ export const UserProvider = ({ children }) => {
           setGuestProfile(null)
         } else {
           const localProfile = JSON.parse(localStorage.getItem('profile') || '{}')
-          if (localProfile && (localProfile.name || localProfile.email || localProfile.phone)) {
+          const localEmail = (localProfile.email || '').trim().toLowerCase()
+          const isAdminEmail = getEnvAdminEmails().includes(localEmail)
+          if (
+            !isAdminEmail &&
+            localProfile &&
+            (localProfile.name || localProfile.email || localProfile.phone)
+          ) {
             setGuestProfile(localProfile)
             setUserProfile(null)
           } else {

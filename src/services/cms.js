@@ -111,6 +111,7 @@ export async function saveHomeContent(content) {
     if (!firestore) {
       localStorage.setItem('home_content', JSON.stringify(content))
       localStorage.setItem('admin_home_content', JSON.stringify(content))
+      window.dispatchEvent(new Event('homeContentUpdated'))
       return { success: true, localOnly: true }
     }
 
@@ -124,6 +125,7 @@ export async function saveHomeContent(content) {
     // Cache in localStorage
     localStorage.setItem('home_content', JSON.stringify(content))
     localStorage.setItem('admin_home_content', JSON.stringify(content))
+    window.dispatchEvent(new Event('homeContentUpdated'))
     
     console.log('✅ Home content saved to Firestore')
     return { success: true }

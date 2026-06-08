@@ -61,7 +61,7 @@ function Footer() {
               <img 
                 src={brand.logo} 
                 alt={brand.siteName} 
-                className={`h-10 w-10 sm:h-12 sm:w-12 object-contain transition-transform group-hover:scale-105 ${
+                className={`h-10 w-auto sm:h-12 max-h-12 object-contain transition-transform group-hover:scale-105 ${
                   brand.logo.startsWith('data:') ? '' : 'brightness-0 invert'
                 }`} 
               />

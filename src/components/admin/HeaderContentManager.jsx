@@ -295,7 +295,7 @@ function HeaderContentManager() {
                 <img
                   src={headerContent.logo}
                   alt="Logo preview"
-                  className="h-14 w-auto object-contain border rounded p-1 bg-white"
+                  className="h-14 w-auto max-w-full object-contain"
                 />
                 <p className="text-xs text-gray-500">
                   {headerContent.logo?.startsWith('data:')

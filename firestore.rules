@@ -158,8 +158,14 @@ service cloud.firestore {
     // ─── Orders ────────────────────────────────────────────────────────────
 
     match /orders/{orderId} {
-      // list/get split: admin analytics/orders pages query all orders (orderBy created_at)
-      allow list: if isAdmin();
+      // list/get split: admins query all orders; customers query their own (user_id or guest_email)
+      allow list: if isAdmin()
+        || (isSignedIn() && resource.data.user_id == request.auth.uid)
+        || (
+          isSignedIn()
+          && resource.data.keys().hasAny(['guest_email'])
+          && resource.data.guest_email == request.auth.token.email
+        );
       allow get: if isAdmin() || orderBelongsToUser();
 
       // Checkout: guests and logged-in users can place orders

@@ -92,6 +92,10 @@ function HeroCarousel({ slides = [] }) {
   const cardRotateX = useTransform(smoothY, [-0.5, 0.5], [8, -8])
 
   useEffect(() => {
+    setCurrentSlide(0)
+  }, [slides])
+
+  useEffect(() => {
     if (activeSlides.length <= 1) return undefined
     const id = setInterval(() => {
       setCurrentSlide((p) => (p + 1) % activeSlides.length)
@@ -110,8 +114,14 @@ function HeroCarousel({ slides = [] }) {
       className="hero-premium relative min-h-[min(100vh,920px)] flex flex-col overflow-hidden -mt-1"
       onMouseMove={handleMouseMove}
     >
-      {/* Animated background — no photos */}
       <div className="hero-premium__bg absolute inset-0" />
+      {slide.image && (
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-20"
+          style={{ backgroundImage: `url(${slide.image})` }}
+          aria-hidden="true"
+        />
+      )}
       <div className="hero-premium__mesh absolute inset-0" />
       <div className="hero-premium__grid absolute inset-0 opacity-[0.35]" />
 

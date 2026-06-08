@@ -19,18 +19,22 @@ function Orders() {
     setError(null)
     try {
       if (currentUser) {
-        // Load orders for authenticated user
-        const data = await getOrdersByUserId(currentUser.id)
-        setOrders(data || [])
+        const [userOrders, guestOrders] = await Promise.all([
+          getOrdersByUserId(currentUser.id),
+          currentUser.email ? getGuestOrdersByEmail(currentUser.email) : Promise.resolve([]),
+        ])
+        const merged = [...(userOrders || []), ...(guestOrders || [])]
+        const seen = new Set()
+        setOrders(
+          merged.filter((order) => {
+            const key = order.id || order.order_id
+            if (!key || seen.has(key)) return false
+            seen.add(key)
+            return true
+          })
+        )
       } else {
-        // Load guest orders from localStorage (by email)
-        const guestEmail = JSON.parse(localStorage.getItem('profile') || '{}').email
-        if (guestEmail) {
-          const data = await getGuestOrdersByEmail(guestEmail)
-          setOrders(data || [])
-        } else {
-          setOrders([])
-        }
+        setOrders([])
       }
     } catch (err) {
       console.error('Error loading orders:', err)

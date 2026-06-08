@@ -4,8 +4,10 @@ import { motion } from 'framer-motion'
 import { ArrowRight, Star, Heart, ShoppingCart, Leaf } from 'lucide-react'
 import { SectionHeading } from '../effects/SectionHeading'
 import { ScrollReveal } from '../effects/ScrollReveal'
+import { DEFAULT_HOME_CONTENT } from '../../../utils/homeContent'
 
 export function ProductsSection({
+  heading = DEFAULT_HOME_CONTENT.productsHeading,
   products,
   selectedSizes,
   favorites,
@@ -18,9 +20,9 @@ export function ProductsSection({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8 mb-14 md:mb-20">
           <SectionHeading
-            label="Curated"
-            title="Bestsellers"
-            subtitle="Loved across India for visible, gentle results"
+            label={heading.label}
+            title={heading.title}
+            subtitle={heading.subtitle}
             align="left"
             fallingTitle
           />

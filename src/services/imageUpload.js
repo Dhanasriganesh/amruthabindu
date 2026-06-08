@@ -108,6 +108,10 @@ export async function deleteImageFromStorage(imageUrl) {
  * @returns {Promise<Blob>} Compressed image blob
  */
 export async function compressImage(file, maxWidth = 1200, quality = 0.85) {
+  const preserveTransparency =
+    file.type === 'image/png' || file.type === 'image/webp' || file.type === 'image/gif'
+  const outputType = preserveTransparency ? 'image/png' : 'image/jpeg'
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.readAsDataURL(file)
@@ -129,6 +133,9 @@ export async function compressImage(file, maxWidth = 1200, quality = 0.85) {
         canvas.height = height
 
         const ctx = canvas.getContext('2d')
+        if (preserveTransparency) {
+          ctx.clearRect(0, 0, width, height)
+        }
         ctx.drawImage(img, 0, 0, width, height)
 
         canvas.toBlob(
@@ -139,8 +146,8 @@ export async function compressImage(file, maxWidth = 1200, quality = 0.85) {
               reject(new Error('Failed to compress image'))
             }
           },
-          'image/jpeg',
-          quality
+          outputType,
+          preserveTransparency ? undefined : quality
         )
       }
       img.onerror = () => reject(new Error('Failed to load image'))

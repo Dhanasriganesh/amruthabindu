@@ -4,11 +4,10 @@ import { motion, useScroll, useTransform } from 'framer-motion'
 import { ArrowUpRight } from 'lucide-react'
 import { SectionHeading } from '../effects/SectionHeading'
 import { ScrollReveal } from '../effects/ScrollReveal'
-import { HOME_COLLECTION_CATEGORIES } from '../../../constants/categories'
+import { buildHomeCategories, DEFAULT_HOME_CONTENT } from '../../../utils/homeContent'
 
-const CATEGORIES = HOME_COLLECTION_CATEGORIES
-
-export function CategoriesSection() {
+export function CategoriesSection({ categories = DEFAULT_HOME_CONTENT.categories }) {
+  const CATEGORIES = buildHomeCategories({ categories })
   const ref = React.useRef(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
   const scale = useTransform(scrollYProgress, [0, 0.5, 1], [0.92, 1, 0.96])

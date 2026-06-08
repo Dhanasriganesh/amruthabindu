@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { User, Mail, Phone, Package, Heart, LogOut, ShoppingBag } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useUser } from '../../contexts/UserContext'
+import { getEnvAdminEmails } from '../../services/admin-auth'
 
 function Account() {
   const navigate = useNavigate()
@@ -13,28 +14,36 @@ function Account() {
   const [isEditing, setIsEditing] = useState(false)
 
   useEffect(() => {
-    // Load profile data from auth user or guest profile
-    if (currentUser && userProfile) {
+    if (currentUser) {
       setProfile({
-        name: userProfile.name || '',
-        email: userProfile.email || '',
-        phone: userProfile.phone || ''
+        name:
+          userProfile?.name ||
+          currentUser.user_metadata?.display_name ||
+          currentUser.displayName ||
+          '',
+        email: currentUser.email || userProfile?.email || '',
+        phone: userProfile?.phone || currentUser.user_metadata?.phone || '',
       })
-    } else if (guestProfile) {
+      return
+    }
+
+    if (guestProfile) {
       setProfile({
         name: guestProfile.name || '',
         email: guestProfile.email || '',
-        phone: guestProfile.phone || ''
+        phone: guestProfile.phone || '',
       })
-    } else {
-      // Try localStorage fallback
-      try {
-        const p = JSON.parse(localStorage.getItem('profile') || '{}')
-        if (p && (p.name || p.email || p.phone)) {
-          setProfile({ name: p.name || '', email: p.email || '', phone: p.phone || '' })
-        }
-      } catch {}
+      return
     }
+
+    try {
+      const p = JSON.parse(localStorage.getItem('profile') || '{}')
+      const storedEmail = (p.email || '').trim().toLowerCase()
+      const isAdminEmail = getEnvAdminEmails().includes(storedEmail)
+      if (!isAdminEmail && p && (p.name || p.email || p.phone)) {
+        setProfile({ name: p.name || '', email: p.email || '', phone: p.phone || '' })
+      }
+    } catch {}
   }, [currentUser, userProfile, guestProfile])
 
   const handleChange = (e) => {

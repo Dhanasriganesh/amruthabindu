@@ -3,8 +3,9 @@ import { motion } from 'framer-motion'
 import { Star, Quote, ChevronLeft, ChevronRight } from 'lucide-react'
 import { SectionHeading } from '../effects/SectionHeading'
 import { ScrollReveal } from '../effects/ScrollReveal'
+import { DEFAULT_HOME_CONTENT } from '../../../utils/homeContent'
 
-const TESTIMONIALS = [
+const FALLBACK_TESTIMONIALS = [
   {
     name: 'Priya',
     location: 'Hyderabad, Telangana',
@@ -83,7 +84,11 @@ function TestimonialCard({ testimonial, index }) {
   )
 }
 
-export function TestimonialsSection() {
+export function TestimonialsSection({
+  heading = DEFAULT_HOME_CONTENT.testimonialsHeading,
+  testimonials = DEFAULT_HOME_CONTENT.testimonials,
+}) {
+  const items = testimonials?.length ? testimonials : FALLBACK_TESTIMONIALS
   const trackRef = useRef(null)
 
   const scrollByCard = useCallback((direction) => {
@@ -118,9 +123,9 @@ export function TestimonialsSection() {
 
       <div className="relative pt-24 md:pt-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <SectionHeading
-          label="Voices"
-          title="What They Say"
-          subtitle="Swipe through real stories — your page keeps scrolling down as usual"
+          label={heading.label}
+          title={heading.title}
+          subtitle={heading.subtitle}
           dark
         />
       </div>
@@ -161,8 +166,8 @@ export function TestimonialsSection() {
           role="region"
           aria-label="Customer reviews carousel"
         >
-          {TESTIMONIALS.map((t, idx) => (
-            <TestimonialCard key={t.name} testimonial={t} index={idx} />
+          {items.map((t, idx) => (
+            <TestimonialCard key={`${t.name}-${idx}`} testimonial={t} index={idx} />
           ))}
         </div>
 

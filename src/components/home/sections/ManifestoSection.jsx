@@ -2,9 +2,10 @@ import React from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { FallingLetters } from '../effects/FallingLetters'
 import { ScrollReveal } from '../effects/ScrollReveal'
+import { DEFAULT_HOME_CONTENT } from '../../../utils/homeContent'
 
 /** Full-width manifesto with falling letters + scroll-linked background shift */
-export function ManifestoSection() {
+export function ManifestoSection({ content = DEFAULT_HOME_CONTENT.manifesto }) {
   const ref = React.useRef(null)
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -29,18 +30,18 @@ export function ManifestoSection() {
 
       <div className="relative z-10 max-w-5xl mx-auto px-6 sm:px-10 py-24 md:py-32 text-center">
         <ScrollReveal>
-          <p className="home-section-label text-[var(--home-gold-light)] mb-8">Our Philosophy</p>
+          <p className="home-section-label text-[var(--home-gold-light)] mb-8">{content.label}</p>
         </ScrollReveal>
 
         <motion.div style={{ opacity }}>
           <FallingLetters
-            text="Rooted in Ritual."
+            text={content.line1}
             as="p"
             className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-white block mb-2"
             stagger={0.05}
           />
           <FallingLetters
-            text="Crafted by Hand."
+            text={content.line2}
             as="p"
             className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl home-shimmer-text block"
             delay={0.35}
@@ -50,7 +51,7 @@ export function ManifestoSection() {
 
         <ScrollReveal delay={0.5}>
           <p className="mt-10 text-lg sm:text-xl text-white/70 font-body-premium max-w-2xl mx-auto leading-relaxed">
-            Every powder tells a story of soil, sun, and generations of Ayurvedic wisdom — bottled without compromise.
+            {content.description}
           </p>
         </ScrollReveal>
 

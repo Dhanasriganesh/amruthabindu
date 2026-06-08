@@ -7,9 +7,20 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
+
+export const HERO_SLIDES_UPDATED_EVENT = 'heroSlidesUpdated'
+
+function notifyHeroSlidesUpdated() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(HERO_SLIDES_UPDATED_EVENT))
+  }
+}
+
+function sortSlidesByOrder(slides) {
+  return [...slides].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+}
 
 export const defaultSlides = [
   {
@@ -60,22 +71,23 @@ function slideToFirestore(slideData) {
   }
 }
 
+/** Fallback slide IDs are local-only until saved to Firestore. */
+export function isPlaceholderSlideId(id) {
+  return !id || String(id).startsWith('default-')
+}
+
 export async function fetchHeroSlides() {
   try {
     if (!db || !isFirebaseConfigured()) {
       return defaultSlides
     }
 
-    const q = query(
-      collection(db, 'hero_slides'),
-      where('is_active', '==', true),
-      orderBy('order', 'asc')
-    )
+    const q = query(collection(db, 'hero_slides'), where('is_active', '==', true))
     const snap = await getDocs(q)
 
     if (snap.empty) return defaultSlides
 
-    const slides = snap.docs.map(mapSlide)
+    const slides = sortSlidesByOrder(snap.docs.map(mapSlide))
     console.log('✅ Loaded hero slides from Firebase:', slides.length)
     return slides
   } catch (error) {
@@ -88,10 +100,9 @@ export async function fetchAllHeroSlides() {
   try {
     if (!db || !isFirebaseConfigured()) return defaultSlides
 
-    const q = query(collection(db, 'hero_slides'), orderBy('order', 'asc'))
-    const snap = await getDocs(q)
+    const snap = await getDocs(collection(db, 'hero_slides'))
     if (snap.empty) return defaultSlides
-    return snap.docs.map(mapSlide)
+    return sortSlidesByOrder(snap.docs.map(mapSlide))
   } catch (error) {
     console.error('❌ Error fetching all hero slides:', error)
     return defaultSlides
@@ -103,6 +114,7 @@ export async function addHeroSlide(slideData) {
     if (!db || !isFirebaseConfigured()) throw new Error('Firebase not configured')
 
     const ref = await addDoc(collection(db, 'hero_slides'), slideToFirestore(slideData))
+    notifyHeroSlidesUpdated()
     console.log('✅ Hero slide added successfully')
     return { success: true, data: { id: ref.id } }
   } catch (error) {
@@ -115,7 +127,12 @@ export async function updateHeroSlide(id, slideData) {
   try {
     if (!db || !isFirebaseConfigured()) throw new Error('Firebase not configured')
 
+    if (isPlaceholderSlideId(id)) {
+      return addHeroSlide(slideData)
+    }
+
     await updateDoc(doc(db, 'hero_slides', id), slideToFirestore(slideData))
+    notifyHeroSlidesUpdated()
     console.log('✅ Hero slide updated successfully')
     return { success: true }
   } catch (error) {
@@ -128,7 +145,12 @@ export async function deleteHeroSlide(id) {
   try {
     if (!db || !isFirebaseConfigured()) throw new Error('Firebase not configured')
 
+    if (isPlaceholderSlideId(id)) {
+      return { success: true }
+    }
+
     await deleteDoc(doc(db, 'hero_slides', id))
+    notifyHeroSlidesUpdated()
     console.log('✅ Hero slide deleted successfully')
     return { success: true }
   } catch (error) {
@@ -141,7 +163,13 @@ export async function toggleSlideActive(id, isActive) {
   try {
     if (!db || !isFirebaseConfigured()) throw new Error('Firebase not configured')
 
+    if (isPlaceholderSlideId(id)) {
+      const placeholder = defaultSlides.find((slide) => slide.id === id) || defaultSlides[0]
+      return addHeroSlide({ ...placeholder, isActive })
+    }
+
     await updateDoc(doc(db, 'hero_slides', id), { is_active: isActive })
+    notifyHeroSlidesUpdated()
     console.log('✅ Hero slide status toggled')
     return { success: true }
   } catch (error) {
