@@ -6,9 +6,12 @@ import sendFailedPaymentEmailHandler from '../api/send-failed-payment-email.js'
 import sendLeadEmailHandler from '../api/send-lead-email.js'
 import sendBulkEmailHandler from '../api/send-bulk-email.js'
 import createRazorpayOrderHandler from '../api/razorpay/create-order.js'
+import createRazorpayLinkHandler from '../api/razorpay/create-link.js'
 import pushOrderToShiprocketHandler from '../api/push-order-to-shiprocket.js'
 import updateOrderStatusHandler from '../api/update-order-status.js'
 import checkShiprocketTrackingHandler from '../api/check-shiprocket-tracking.js'
+import getShippingRateHandler from '../api/get-shipping-rate.js'
+import { isShiprocketConfigured } from '../api/lib/shiprocket.js'
 
 // Load environment variables
 dotenv.config()
@@ -18,7 +21,8 @@ const PORT = process.env.PORT || 3001
 
 // Middleware
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: '2mb' }))
+app.use(express.urlencoded({ extended: true, limit: '2mb' }))
 
 // API Routes
 app.post('/api/send-order-email', async (req, res) => {
@@ -80,6 +84,16 @@ app.post('/api/razorpay/create-order', async (req, res) => {
   }
 })
 
+app.post('/api/razorpay/create-link', async (req, res) => {
+  console.log('🌐 SERVER: Received request to /api/razorpay/create-link')
+  try {
+    await createRazorpayLinkHandler(req, res)
+  } catch (error) {
+    console.error('🌐 SERVER ERROR:', error)
+    res.status(500).json({ error: error.message || 'Internal server error' })
+  }
+})
+
 app.post('/api/push-order-to-shiprocket', async (req, res) => {
   console.log('🌐 SERVER: Received request to /api/push-order-to-shiprocket')
   console.log('🌐 SERVER: Order ID:', req.body.orderId)
@@ -96,6 +110,16 @@ app.post('/api/update-order-status', async (req, res) => {
   console.log('🌐 SERVER: Order ID:', req.body.orderId, 'Status:', req.body.status)
   try {
     await updateOrderStatusHandler(req, res)
+  } catch (error) {
+    console.error('🌐 SERVER ERROR:', error)
+    res.status(500).json({ error: error.message || 'Internal server error' })
+  }
+})
+
+app.post('/api/get-shipping-rate', async (req, res) => {
+  console.log('🌐 SERVER: Received request to /api/get-shipping-rate')
+  try {
+    await getShippingRateHandler(req, res)
   } catch (error) {
     console.error('🌐 SERVER ERROR:', error)
     res.status(500).json({ error: error.message || 'Internal server error' })
@@ -126,5 +150,10 @@ app.listen(PORT, () => {
   console.log(`   SMTP_PASS: ${process.env.SMTP_PASS ? '***SET***' : 'NOT SET'}`)
   console.log(`   GMAIL_APP_PASSWORD: ${process.env.GMAIL_APP_PASSWORD ? '***SET***' : 'NOT SET'}`)
   console.log(`   ADMIN_EMAIL: ${process.env.ADMIN_EMAIL || 'NOT SET'}`)
+  console.log(`\n📦 Shiprocket Configuration:`)
+  console.log(`   SHIPROCKET_API_EMAIL: ${process.env.SHIPROCKET_API_EMAIL || 'NOT SET'}`)
+  console.log(`   SHIPROCKET_API_PASSWORD: ${process.env.SHIPROCKET_API_PASSWORD ? '***SET***' : 'NOT SET'}`)
+  console.log(`   SHIPROCKET_PICKUP_LOCATION: ${process.env.SHIPROCKET_PICKUP_LOCATION || 'Primary'}`)
+  console.log(`   Shiprocket ready: ${isShiprocketConfigured() ? 'YES — orders will sync on checkout' : 'NO — add credentials to .env'}`)
 })
 

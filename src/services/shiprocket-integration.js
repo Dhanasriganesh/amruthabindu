@@ -5,16 +5,49 @@
  * Gracefully skips when Shiprocket credentials are not configured.
  */
 
+/** Strip cart fields (e.g. base64 images) that Shiprocket does not need. */
+export function slimOrderForShiprocket(orderData) {
+  const shipping = orderData.shippingAddress || orderData.shipping_address || {}
+
+  return {
+    orderId: orderData.orderId || orderData.order_id,
+    items: (orderData.items || []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      size: item.size,
+      sku: item.sku,
+      quantity: item.quantity,
+      price: item.price,
+    })),
+    totals: orderData.totals || {},
+    shippingAddress: {
+      firstName: shipping.firstName,
+      lastName: shipping.lastName,
+      email: shipping.email,
+      phone: shipping.phone,
+      address: shipping.address,
+      city: shipping.city,
+      state: shipping.state,
+      pincode: shipping.pincode,
+      country: shipping.country,
+    },
+    paymentMethod: orderData.paymentMethod || orderData.payment_method,
+    couponCode: orderData.couponCode || orderData.coupon_code || null,
+    errorMessage: orderData.errorMessage || orderData.error_message || null,
+  }
+}
+
 export async function pushOrderToShiprocket(orderData) {
   try {
-    console.log('📦 Pushing order to Shiprocket via backend:', orderData.orderId)
+    const payload = slimOrderForShiprocket(orderData)
+    console.log('📦 Pushing order to Shiprocket via backend:', payload.orderId)
 
     const response = await fetch('/api/push-order-to-shiprocket', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(orderData),
+      body: JSON.stringify(payload),
     })
 
     const result = await response.json().catch(() => ({}))

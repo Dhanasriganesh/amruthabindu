@@ -110,6 +110,7 @@ export const CartProvider = ({ children }) => {
       category: product.category,
       size: size.size,
       sku: size.sku || null,
+      weight: size.weight || null,
       price: size.price,
       quantity: quantity,
       image: product.images ? product.images[0] : (product.image || null),

@@ -68,6 +68,15 @@ export async function saveOrder(order) {
     created_at: new Date().toISOString(),
   }
 
+  if (order.couponCode) {
+    sanitizedOrder.coupon_code = order.couponCode
+  }
+  if (order.errorMessage) {
+    sanitizedOrder.error_message = order.errorMessage
+  } else if (order.paymentMethod === 'cod' || order.paymentId) {
+    sanitizedOrder.fulfillment_status = order.fulfillmentStatus || 'AWAITING_PROCESSING'
+  }
+
   if (order.shiprocketOrderId !== undefined) {
     sanitizedOrder.shiprocket_order_id = order.shiprocketOrderId
   }

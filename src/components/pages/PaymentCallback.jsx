@@ -4,9 +4,12 @@ import { saveOrder } from '../../services/db'
 import { useCart } from '../../contexts/CartContext'
 import { useCoupon } from '../../contexts/CouponContext'
 import { useAuth } from '../../contexts/AuthContext'
-import { recordCouponUsage } from '../../services/coupon-service'
-import { pushOrderToShiprocket } from '../../services/shiprocket-integration'
-import { updateOrderByOrderId } from '../../services/firebase-db'
+import {
+  buildOrderData,
+  saveOrderWithCoupon,
+  syncOrderToShiprocket,
+  sendOrderConfirmationEmail,
+} from '../../services/order-completion'
 
 function PaymentCallback() {
   const navigate = useNavigate()
@@ -26,66 +29,31 @@ function PaymentCallback() {
         const deliv = deliveryInfo?.deliveryPrice || 0
         const couponDiscount = getDiscountAmount(getCartTotal())
 
-        // Prepare order data for Firebase and Shiprocket
-        const orderData = {
+        const orderData = buildOrderData({
           orderId,
           paymentId,
           items: cartItems,
           totals: {
             subtotal: getCartTotal(),
             savings: getCartSavings(),
-            couponDiscount: couponDiscount,
+            couponDiscount,
             delivery: deliv,
             total: getCartTotal() - couponDiscount + deliv,
           },
-          deliveryInfo: deliveryInfo || null,
-          shippingAddress: shippingAddress || null,
+          deliveryInfo,
+          shippingAddress,
           paymentMethod: 'payment_link',
           userId: currentUser?.id || null,
           couponCode: appliedCoupon?.code || null,
-        }
+        })
 
         try {
-          // Save to Supabase
-          await saveOrder(orderData)
-
-          // Record coupon usage if coupon was applied
-          if (appliedCoupon && couponDiscount > 0) {
-            await recordCouponUsage(
-              appliedCoupon.id,
-              currentUser?.id || null,
-              shippingAddress?.email || null,
-              orderId,
-              couponDiscount
-            )
-          }
+          await saveOrderWithCoupon(orderData, appliedCoupon, couponDiscount)
         } catch (error) {
-          console.error('Failed to save order to Supabase:', error)
-          // Continue with email and invoice even if Supabase fails
+          console.error('Failed to save order to Firebase:', error)
         }
 
-        // Push order to Shiprocket (fire-and-forget)
-        pushOrderToShiprocket(orderData)
-          .then(result => {
-            if (result.success && result.shiprocketOrderId) {
-              console.log('✅ CALLBACK: Order synced to Shiprocket:', result)
-              const updates = {
-                shiprocket_order_id: result.shiprocketOrderId.toString(),
-                fulfillment_status: 'AWAITING_PROCESSING',
-              }
-              if (result.shipmentId) {
-                updates.shiprocket_shipment_id = result.shipmentId.toString()
-              }
-              updateOrderByOrderId(orderId, updates)
-            } else if (result.skipped) {
-              console.info('ℹ️ CALLBACK: Shiprocket not configured — order saved without delivery sync')
-            } else {
-              console.warn('⚠️ CALLBACK: Failed to sync to Shiprocket:', result.error)
-            }
-          })
-          .catch(error => {
-            console.warn('⚠️ CALLBACK: Shiprocket sync unavailable:', error.message)
-          })
+        syncOrderToShiprocket(orderData, orderId)
         // Build invoice HTML and trigger download
         try {
           const rows = cartItems.map(it => `<tr><td>${it.name} (${it.size})</td><td>${it.quantity}</td><td>₹${it.price}</td><td>₹${it.price * it.quantity}</td></tr>`).join('')
@@ -116,65 +84,18 @@ function PaymentCallback() {
 
           // Email customer and admin with attachment
           try {
-            console.log('📧 CALLBACK: Starting email send process...')
-            
-            // Check if customer email is available
-            if (!shippingAddress?.email) {
-              console.warn('⚠️ CALLBACK: No customer email found, skipping email notification')
-              console.warn('⚠️ CALLBACK: Shipping address:', shippingAddress)
-              return
-            }
-            
-            const orderItems = cartItems.map(it => ({ title: `${it.name} (${it.size})`, quantity: it.quantity, price: it.price }))
-            const address = shippingAddress ? [
-              `${shippingAddress.firstName || ''} ${shippingAddress.lastName || ''}`.trim(),
-              shippingAddress.address,
-              `${shippingAddress.city || ''}, ${shippingAddress.state || ''} ${shippingAddress.pincode || ''}`.trim(),
-              shippingAddress.country || 'India',
-              `Phone: ${shippingAddress.phone || ''}`
-            ].filter(Boolean).join('\n') : ''
-            
-            const emailPayload = {
+            await sendOrderConfirmationEmail({
               orderId,
               paymentId,
-              customerName: `${shippingAddress?.firstName || ''} ${shippingAddress?.lastName || ''}`.trim() || 'Customer',
-              customerEmail: shippingAddress?.email,
-              customerPhone: shippingAddress?.phone,
-              orderItems,
-              orderTotal: getCartTotal() + deliv,
-              subtotal: getCartTotal(),
-              delivery: deliv,
-              paymentMethod: 'Razorpay',
-              customerAddress: address,
+              shippingAddress,
+              cartItems,
+              getCartTotal,
+              deliveryPrice: deliv,
+              paymentMethod: 'payment_link',
               invoiceHtml,
-            }
-            
-            console.log('📧 CALLBACK: Email payload:', {
-              orderId: emailPayload.orderId,
-              customerEmail: emailPayload.customerEmail,
-              orderTotal: emailPayload.orderTotal,
-              itemCount: emailPayload.orderItems.length
             })
-            
-            console.log('📧 CALLBACK: Fetching /api/send-order-email...')
-            const r = await fetch('/api/send-order-email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(emailPayload)
-            })
-            
-            console.log('📧 CALLBACK: Response status:', r.status)
-            
-            if (!r.ok) {
-              const errorText = await r.text()
-              console.warn('❌ CALLBACK: Email send failed:', errorText)
-            } else {
-              const result = await r.json()
-              console.log('✅ CALLBACK: Email sent successfully!', result)
-            }
           } catch (emailError) {
             console.error('❌ CALLBACK: Failed to send email:', emailError)
-            console.error('❌ CALLBACK: Error details:', emailError.message)
           }
 
           clearCart()

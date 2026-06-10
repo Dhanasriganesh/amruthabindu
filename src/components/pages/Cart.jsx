@@ -248,7 +248,7 @@ function Cart() {
 
                 <div className="flex justify-between text-stone-600 text-sm sm:text-base">
                   <span>Shipping</span>
-                  <span className="font-semibold text-green-600">FREE</span>
+                  <span className="font-semibold text-stone-500">At checkout</span>
                 </div>
 
                 <div className="pt-3 sm:pt-4 border-t border-stone-200">
@@ -271,7 +271,7 @@ function Cart() {
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 text-emerald-800">
                     <Package size={16} className="sm:w-[18px] sm:h-[18px] flex-shrink-0" />
-                    <span>Free Shipping on All Orders</span>
+                    <span>Delivery calculated at checkout</span>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 text-emerald-800">
                     <Heart size={16} className="sm:w-[18px] sm:h-[18px] flex-shrink-0" />

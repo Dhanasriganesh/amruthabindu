@@ -1,15 +1,18 @@
-import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { User, LogIn, ShoppingBag } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
 function CheckoutLoginPrompt({ onContinueAsGuest }) {
   const { currentUser } = useAuth()
-  const navigate = useNavigate()
 
-  // If already logged in, continue directly
+  useEffect(() => {
+    if (currentUser) {
+      onContinueAsGuest()
+    }
+  }, [currentUser, onContinueAsGuest])
+
   if (currentUser) {
-    onContinueAsGuest()
     return null
   }
 

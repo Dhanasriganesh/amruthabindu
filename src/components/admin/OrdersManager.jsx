@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { Package, Search, Filter, Download, Eye, X, Calendar, DollarSign, User, MapPin, ShoppingBag, CheckCircle, XCircle, Clock, AlertCircle, Box, Truck } from 'lucide-react'
 import { getAllOrders } from '../../services/firebase-db'
 import { updateOrderStatus, checkTrackingStatus } from '../../services/order-tracking'
+import { isSuccessfulOrder, orderDocToShiprocketPayload } from '../../services/order-completion'
+import { pushOrderToShiprocket } from '../../services/shiprocket-integration'
 
 function OrdersManager() {
   const [orders, setOrders] = useState([])
@@ -11,6 +13,7 @@ function OrdersManager() {
   const [showDetails, setShowDetails] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(null)
   const [syncingTracking, setSyncingTracking] = useState(false)
+  const [pushingToShiprocket, setPushingToShiprocket] = useState(null)
 
   useEffect(() => {
     fetchOrders()
@@ -47,7 +50,20 @@ function OrdersManager() {
   }
 
   const getPaymentStatusBadge = (order) => {
-    // Check if payment exists - if yes, it's successful
+    if (order.error_message) {
+      return {
+        label: 'Failed',
+        color: 'bg-red-100 text-red-800',
+        icon: <XCircle size={14} />
+      }
+    }
+    if (order.payment_method === 'cod') {
+      return {
+        label: 'COD',
+        color: 'bg-blue-100 text-blue-800',
+        icon: <CheckCircle size={14} />
+      }
+    }
     if (order.payment_id && order.payment_id.trim() !== '') {
       return {
         label: 'Paid',
@@ -59,6 +75,49 @@ function OrdersManager() {
       label: 'Pending',
       color: 'bg-yellow-100 text-yellow-800',
       icon: <Clock size={14} />
+    }
+  }
+
+  const handlePushToShiprocket = async (order) => {
+    if (!isSuccessfulOrder(order)) {
+      alert('Only successful orders can be pushed to Shiprocket.')
+      return
+    }
+    if (order.shiprocket_order_id) {
+      alert('This order is already synced to Shiprocket.')
+      return
+    }
+
+    try {
+      setPushingToShiprocket(order.order_id)
+      const payload = orderDocToShiprocketPayload(order)
+      const result = await pushOrderToShiprocket(payload)
+
+      if (result.skipped) {
+        alert('Shiprocket is not configured. Add SHIPROCKET_API_EMAIL and SHIPROCKET_API_PASSWORD to .env and restart the server.')
+        return
+      }
+      if (!result.success) {
+        alert(`Failed to push to Shiprocket:\n${result.error || 'Unknown error'}`)
+        return
+      }
+
+      const { updateOrderByOrderId } = await import('../../services/firebase-db')
+      const updates = {
+        shiprocket_order_id: result.shiprocketOrderId.toString(),
+        fulfillment_status: 'AWAITING_PROCESSING',
+      }
+      if (result.shipmentId) {
+        updates.shiprocket_shipment_id = result.shipmentId.toString()
+      }
+      await updateOrderByOrderId(order.order_id, updates)
+      alert(`Order synced to Shiprocket!\nShiprocket Order ID: ${result.shiprocketOrderId}`)
+      await fetchOrders()
+    } catch (error) {
+      console.error('Failed to push to Shiprocket:', error)
+      alert(`Failed to push to Shiprocket: ${error.message}`)
+    } finally {
+      setPushingToShiprocket(null)
     }
   }
 
@@ -193,7 +252,7 @@ function OrdersManager() {
       order.shipping_address?.email || '',
       order.shipping_address?.phone || '',
       `₹${order.totals?.total || 0}`,
-      getStatusBadge(order).label,
+      getFulfillmentStatusBadge(order).label,
       order.payment_method || 'N/A'
     ])
 
@@ -365,12 +424,12 @@ function OrdersManager() {
             </div>
 
             {/* Shiprocket / Tracking */}
-            {(order.shiprocket_order_id || order.tracking_number) && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Truck size={18} />
-                  Shiprocket Delivery
-                </h4>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Truck size={18} />
+                Shiprocket Delivery
+              </h4>
+              {order.shiprocket_order_id || order.tracking_number ? (
                 <div className="text-sm space-y-2">
                   {order.shiprocket_order_id && (
                     <div className="flex justify-between">
@@ -398,8 +457,22 @@ function OrdersManager() {
                     </div>
                   )}
                 </div>
-              </div>
-            )}
+              ) : isSuccessfulOrder(order) ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-amber-700">Not synced to Shiprocket yet.</p>
+                  <button
+                    type="button"
+                    onClick={() => handlePushToShiprocket(order)}
+                    disabled={pushingToShiprocket === order.order_id}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {pushingToShiprocket === order.order_id ? 'Pushing…' : 'Push to Shiprocket'}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Available after successful payment.</p>
+              )}
+            </div>
 
             {/* Delivery Info */}
             {order.delivery_info && (
@@ -442,7 +515,7 @@ function OrdersManager() {
             <div>
               <p className="text-xs text-gray-600 mb-1">Paid Orders</p>
               <h3 className="text-2xl font-bold text-green-600">
-                {orders.filter(o => o.payment_id && o.payment_id.trim() !== '').length}
+                {orders.filter(o => isSuccessfulOrder(o)).length}
               </h3>
             </div>
             <CheckCircle className="text-green-600" size={24} />
@@ -454,7 +527,7 @@ function OrdersManager() {
             <div>
               <p className="text-xs text-gray-600 mb-1">Total Revenue</p>
               <h3 className="text-2xl font-bold text-gray-900">
-                ₹{orders.filter(o => o.payment_id && o.payment_id.trim() !== '').reduce((sum, o) => sum + (o.totals?.total || 0), 0)}
+                ₹{orders.filter(o => isSuccessfulOrder(o)).reduce((sum, o) => sum + (o.totals?.total || 0), 0)}
               </h3>
             </div>
             <DollarSign className="text-emerald-600" size={24} />
@@ -466,7 +539,7 @@ function OrdersManager() {
             <div>
               <p className="text-xs text-gray-600 mb-1">Pending</p>
               <h3 className="text-2xl font-bold text-yellow-600">
-                {orders.filter(o => !o.payment_id || o.payment_id.trim() === '').length}
+                {orders.filter(o => !isSuccessfulOrder(o)).length}
               </h3>
             </div>
             <Clock className="text-yellow-600" size={24} />

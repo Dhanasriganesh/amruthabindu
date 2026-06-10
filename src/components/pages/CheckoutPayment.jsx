@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CreditCard, Shield, AlertCircle, ExternalLink } from 'lucide-react'
+import { ArrowLeft, CreditCard, Shield, Banknote } from 'lucide-react'
 import { useCart } from '../../contexts/CartContext'
 import { useCoupon } from '../../contexts/CouponContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { saveOrder } from '../../services/db'
-import { recordCouponUsage } from '../../services/coupon-service'
-import { pushOrderToShiprocket } from '../../services/shiprocket-integration'
-import { updateOrderByOrderId } from '../../services/firebase-db'
+import {
+  buildOrderData,
+  saveOrderWithCoupon,
+  syncOrderToShiprocket,
+  sendOrderConfirmationEmail,
+} from '../../services/order-completion'
+import { fetchShippingRate, saveDeliveryInfo, formatDeliveryPrice } from '../../services/shipping-rate'
 
 function CheckoutPayment() {
   const navigate = useNavigate()
@@ -15,8 +19,10 @@ function CheckoutPayment() {
   const { items: cartItems, getCartTotal, getCartSavings, clearCart } = useCart()
   const { appliedCoupon, getDiscountAmount } = useCoupon()
   const [isProcessing, setIsProcessing] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('razorpay')
   const [deliveryInfo, setDeliveryInfo] = useState(null)
   const [shippingAddress, setShippingAddress] = useState(null)
+  const [updatingDeliveryRate, setUpdatingDeliveryRate] = useState(false)
 
   const RZP_KEY_ID = import.meta.env.VITE_RZP_KEY_ID || 'rzp_test_RQExe4U0EyrYxr'
   const PAYMENT_PAGE_URL = import.meta.env.VITE_RZP_PAYMENT_PAGE_URL || ''
@@ -27,6 +33,43 @@ function CheckoutPayment() {
     const savedAddress = localStorage.getItem('shippingAddress')
     if (savedAddress) setShippingAddress(JSON.parse(savedAddress))
   }, [])
+
+  useEffect(() => {
+    if (!shippingAddress?.pincode || cartItems.length === 0) return
+
+    let cancelled = false
+    async function refreshRateForPaymentMethod() {
+      setUpdatingDeliveryRate(true)
+      try {
+        const result = await fetchShippingRate({
+          deliveryPincode: shippingAddress.pincode,
+          cartItems,
+          orderValue: getCartTotal(),
+          cod: paymentMethod === 'cod',
+        })
+
+        if (cancelled || !result.success) return
+
+        const updated = saveDeliveryInfo(
+          {
+            selectedDelivery: deliveryInfo?.selectedDelivery || 'standard',
+            deliveryInstructions: deliveryInfo?.deliveryInstructions || '',
+          },
+          { ...result, cod: paymentMethod === 'cod' }
+        )
+        setDeliveryInfo(updated)
+      } catch (error) {
+        console.warn('Could not refresh delivery rate:', error.message)
+      } finally {
+        if (!cancelled) setUpdatingDeliveryRate(false)
+      }
+    }
+
+    refreshRateForPaymentMethod()
+    return () => {
+      cancelled = true
+    }
+  }, [paymentMethod, shippingAddress?.pincode, cartItems, getCartTotal])
 
   const amountPaise = () => {
     const couponDiscount = getDiscountAmount(getCartTotal())
@@ -393,167 +436,119 @@ function CheckoutPayment() {
     }
   }
 
-  const handlePaymentSuccess = async (response) => {
-      const deliv = deliveryInfo?.deliveryPrice || 0
-      const orderId = response.razorpay_order_id || `order_${Date.now()}`
-
+  const finalizeSuccessfulOrder = async ({
+    orderId,
+    paymentId,
+    method,
+    paymentMethodLabel,
+    successMessage,
+  }) => {
+    const deliv = deliveryInfo?.deliveryPrice || 0
     const couponDiscount = getDiscountAmount(getCartTotal())
-    
-    // Prepare order data for Firebase and Shiprocket
-    const orderData = {
+
+    const orderData = buildOrderData({
       orderId,
-      paymentId: response.razorpay_payment_id,
+      paymentId,
       items: cartItems,
       totals: {
         subtotal: getCartTotal(),
         savings: getCartSavings(),
-        couponDiscount: couponDiscount,
+        couponDiscount,
         delivery: deliv,
         total: getCartTotal() - couponDiscount + deliv,
       },
       deliveryInfo: deliveryInfo || null,
       shippingAddress: shippingAddress || null,
-      paymentMethod: 'razorpay',
+      paymentMethod: method,
       userId: currentUser?.id || null,
       couponCode: appliedCoupon?.code || null,
-    }
-    
-    try {
-      // Save to Supabase
-      await saveOrder(orderData)
+    })
 
-      // Record coupon usage if coupon was applied
-      if (appliedCoupon && couponDiscount > 0) {
-        await recordCouponUsage(
-          appliedCoupon.id,
-          currentUser?.id || null,
-          shippingAddress?.email || null,
-          orderId,
-          couponDiscount
-        )
-      }
+    try {
+      await saveOrderWithCoupon(orderData, appliedCoupon, couponDiscount)
     } catch (error) {
       console.error('Failed to save order to Firebase:', error)
-      // Continue with email and invoice even if Firebase fails
     }
 
-    // Push order to Shiprocket automatically (runs in background)
-    console.log('📦 Auto-sending order to Shiprocket...')
-    pushOrderToShiprocket(orderData)
-      .then(result => {
-        if (result.success && result.shiprocketOrderId) {
-          console.log('✅ Order sent to Shiprocket successfully!')
-          console.log('   Shiprocket Order ID:', result.shiprocketOrderId)
-          console.log('   Shipment ID:', result.shipmentId)
+    syncOrderToShiprocket(orderData, orderId)
 
-          const updates = {
-            shiprocket_order_id: result.shiprocketOrderId.toString(),
-            fulfillment_status: 'AWAITING_PROCESSING',
-          }
-          if (result.shipmentId) {
-            updates.shiprocket_shipment_id = result.shipmentId.toString()
-          }
+    const invoiceHtml = generateInvoiceDownload(orderId, paymentId)
 
-          updateOrderByOrderId(orderId, updates).then(({ error }) => {
-            if (error) {
-              console.error('⚠️ Failed to update order with Shiprocket ID:', error)
-            } else {
-              console.log('✅ Order linked to Shiprocket for delivery tracking')
-            }
-          })
-
-          if (window.location.pathname.includes('/admin')) {
-            window.dispatchEvent(new Event('ordersUpdated'))
-          }
-        } else if (result.skipped) {
-          console.info('ℹ️ Shiprocket not configured — order saved without delivery sync')
-        } else {
-          console.warn('⚠️ Order not sent to Shiprocket:', result.error)
-          console.warn('   Order is saved in your database')
-        }
-      })
-      .catch(error => {
-        console.warn('⚠️ Shiprocket sync unavailable:', error.message)
-      })
-
-    // Generate invoice and trigger download
-    const invoiceHtml = generateInvoiceDownload(orderId, response.razorpay_payment_id)
-
-    // Fire-and-forget: notify customer and admin via email
     try {
-      console.log('📧 CLIENT: Starting email send process...')
-      
-      // Check if customer email is available
-      if (!shippingAddress?.email) {
-        console.warn('⚠️ CLIENT: No customer email found, skipping email notification')
-        console.warn('⚠️ CLIENT: Shipping address:', shippingAddress)
-        return
-      }
-      
-      const orderItems = cartItems.map(it => ({ title: `${it.name} (${it.size})`, quantity: it.quantity, price: it.price }))
-      const address = shippingAddress ? [
-        `${shippingAddress.firstName || ''} ${shippingAddress.lastName || ''}`.trim(),
-        shippingAddress.address,
-        `${shippingAddress.city || ''}, ${shippingAddress.state || ''} ${shippingAddress.pincode || ''}`.trim(),
-        shippingAddress.country || 'India',
-        `Phone: ${shippingAddress.phone || ''}`
-      ].filter(Boolean).join('\n') : ''
-
-      const emailPayload = {
+      await sendOrderConfirmationEmail({
         orderId,
-        paymentId: response.razorpay_payment_id,
-        customerName: `${shippingAddress?.firstName || ''} ${shippingAddress?.lastName || ''}`.trim() || 'Customer',
-        customerEmail: shippingAddress?.email,
-        customerPhone: shippingAddress?.phone,
-        orderItems,
-        orderTotal: getCartTotal() + deliv,
-        subtotal: getCartTotal(),
-        delivery: deliv,
-        paymentMethod: 'Razorpay',
-        customerAddress: address,
+        paymentId,
+        shippingAddress,
+        cartItems,
+        getCartTotal,
+        deliveryPrice: deliv,
+        paymentMethod: method,
         invoiceHtml,
-      }
-      
-      console.log('📧 CLIENT: Email payload:', {
-        orderId: emailPayload.orderId,
-        customerEmail: emailPayload.customerEmail,
-        orderTotal: emailPayload.orderTotal,
-        itemCount: emailPayload.orderItems.length
       })
-
-      console.log('📧 CLIENT: Fetching /api/send-order-email...')
-      const r = await fetch('/api/send-order-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(emailPayload)
-      })
-      
-      console.log('📧 CLIENT: Response status:', r.status)
-      
-      if (!r.ok) {
-        const errorText = await r.text()
-        console.warn('❌ CLIENT: Email send failed:', errorText)
-      } else {
-        const result = await r.json()
-        console.log('✅ CLIENT: Email sent successfully!', result)
-      }
     } catch (emailError) {
-      console.error('❌ CLIENT: Failed to send email:', emailError)
-      console.error('❌ CLIENT: Error details:', emailError.message)
+      console.error('Failed to send order email:', emailError)
     }
 
     clearCart()
     localStorage.removeItem('shippingAddress')
     localStorage.removeItem('deliveryInfo')
-    alert('Payment successful! Invoice downloaded.')
-    const itemsForSuccess = cartItems.map(it => ({
+    alert(successMessage)
+    const itemsForSuccess = cartItems.map((it) => ({
       name: it.name,
       size: it.size,
       price: it.price,
       quantity: it.quantity,
       image: it.image || null,
     }))
-    navigate('/order-success', { state: { paymentId: response.razorpay_payment_id, orderId, items: itemsForSuccess } })
+    navigate('/order-success', {
+      state: { paymentId, orderId, items: itemsForSuccess, paymentMethod: paymentMethodLabel },
+    })
+  }
+
+  const handleCodOrder = async () => {
+    if (!deliveryInfo) {
+      alert('Please complete delivery information first')
+      navigate('/checkout/delivery')
+      return
+    }
+    if (!shippingAddress?.phone || !shippingAddress?.address) {
+      alert('Please complete your shipping address before placing a COD order')
+      navigate('/checkout/address')
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Place Cash on Delivery order for ₹${getFinalTotal()}?\n\nPay when your order is delivered.`
+    )
+    if (!confirmed) return
+
+    setIsProcessing(true)
+    try {
+      const orderId = `cod_${Date.now()}`
+      await finalizeSuccessfulOrder({
+        orderId,
+        paymentId: '',
+        method: 'cod',
+        paymentMethodLabel: 'Cash on Delivery',
+        successMessage: 'Order placed successfully! Pay on delivery.',
+      })
+    } catch (error) {
+      console.error('COD order failed:', error)
+      alert(error?.message || 'Failed to place order. Please try again.')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handlePaymentSuccess = async (response) => {
+    const orderId = response.razorpay_order_id || `order_${Date.now()}`
+    await finalizeSuccessfulOrder({
+      orderId,
+      paymentId: response.razorpay_payment_id,
+      method: 'razorpay',
+      paymentMethodLabel: 'Razorpay',
+      successMessage: 'Payment successful! Invoice downloaded.',
+    })
   }
 
   if (cartItems.length === 0) {
@@ -585,10 +580,51 @@ function CheckoutPayment() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                <CreditCard className="w-6 h-6 mr-2 text-green-800" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Choose Payment Method</h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('razorpay')}
+                  className={`border-2 rounded-lg p-4 text-left transition-all ${
+                    paymentMethod === 'razorpay'
+                      ? 'border-green-800 bg-green-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="w-6 h-6 text-green-800" />
+                    <div>
+                      <p className="font-semibold text-gray-900">Pay Online</p>
+                      <p className="text-sm text-gray-600">UPI, cards, netbanking via Razorpay</p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('cod')}
+                  className={`border-2 rounded-lg p-4 text-left transition-all ${
+                    paymentMethod === 'cod'
+                      ? 'border-green-800 bg-green-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Banknote className="w-6 h-6 text-green-800" />
+                    <div>
+                      <p className="font-semibold text-gray-900">Cash on Delivery</p>
+                      <p className="text-sm text-gray-600">Pay when your order arrives</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {paymentMethod === 'razorpay' ? (
+              <>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <CreditCard className="w-5 h-5 mr-2 text-green-800" />
                 Razorpay Checkout
-              </h2>
+              </h3>
 
               <div className="bg-green-50 p-4 rounded-lg mb-6">
                 <div className="flex items-start space-x-3">
@@ -611,6 +647,31 @@ function CheckoutPayment() {
                   {isProcessing ? 'Processing…' : 'Pay Now'}
                 </button>
               </div>
+              </>
+              ) : (
+              <div>
+                <div className="bg-amber-50 p-4 rounded-lg mb-6">
+                  <div className="flex items-start space-x-3">
+                    <Banknote className="w-6 h-6 text-amber-800 mt-1" />
+                    <div>
+                      <h3 className="font-semibold text-amber-900 mb-2">Cash on Delivery</h3>
+                      <ul className="text-sm text-amber-800 space-y-1">
+                        <li>• Pay ₹{getFinalTotal()} when your order is delivered</li>
+                        <li>• Order will appear in admin and Shiprocket for fulfillment</li>
+                        <li>• Please keep exact change ready if possible</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCodOrder}
+                  disabled={isProcessing}
+                  className="w-full bg-green-800 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessing ? 'Placing order…' : `Place COD Order — ₹${getFinalTotal()}`}
+                </button>
+              </div>
+              )}
 
               
             </div>
@@ -651,7 +712,15 @@ function CheckoutPayment() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Delivery:</span>
-                    <span className="font-medium">{delivPrice === 0 ? (<span className="text-green-600">FREE</span>) : (`₹${delivPrice}`)}</span>
+                    <span className="font-medium">
+                      {updatingDeliveryRate ? (
+                        <span className="text-gray-500">Updating…</span>
+                      ) : delivPrice === 0 ? (
+                        <span className="text-green-600">FREE</span>
+                      ) : (
+                        formatDeliveryPrice(delivPrice)
+                      )}
+                    </span>
                   </div>
                   <div className="border-t border-gray-200 pt-4">
                     <div className="flex justify-between text-lg font-bold">

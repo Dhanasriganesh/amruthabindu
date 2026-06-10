@@ -1,18 +1,17 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Truck, Clock, Shield, CheckCircle, ExternalLink, Share2, Copy } from 'lucide-react'
+import { ArrowLeft, Truck, CheckCircle, Loader2, AlertCircle } from 'lucide-react'
 import { useCart } from '../../contexts/CartContext'
+import { fetchShippingRate, formatDeliveryPrice, saveDeliveryInfo } from '../../services/shipping-rate'
 
 function CheckoutDelivery() {
   const navigate = useNavigate()
   const { items: cartItems, getCartTotal, getCartSavings } = useCart()
-  const [selectedDelivery, setSelectedDelivery] = useState('standard')
   const [deliveryInstructions, setDeliveryInstructions] = useState('')
   const [shippingAddress, setShippingAddress] = useState(null)
-  const [lastLink, setLastLink] = useState('')
-
-  const PAYMENT_PAGE_URL = import.meta.env.VITE_RZP_PAYMENT_PAGE_URL || ''
-  const CREATE_LINK_ENDPOINT = import.meta.env.VITE_CREATE_LINK_ENDPOINT || '/api/razorpay/create-link'
+  const [deliveryQuote, setDeliveryQuote] = useState(null)
+  const [loadingRate, setLoadingRate] = useState(false)
+  const [rateError, setRateError] = useState(null)
 
   useEffect(() => {
     try {
@@ -21,25 +20,60 @@ function CheckoutDelivery() {
     } catch {}
   }, [])
 
-  const deliveryOptions = [
-    {
-      id: 'standard',
-      name: 'Standard Delivery',
-      description: '',
-      price: 0,
-      icon: <Truck className="w-6 h-6" />,
-      popular: false
+  const loadShippingRate = useCallback(async () => {
+    if (!shippingAddress?.pincode || cartItems.length === 0) return
+
+    setLoadingRate(true)
+    setRateError(null)
+
+    try {
+      const result = await fetchShippingRate({
+        deliveryPincode: shippingAddress.pincode,
+        cartItems,
+        orderValue: getCartTotal(),
+        cod: false,
+      })
+
+      if (result.success) {
+        setDeliveryQuote(result)
+      } else {
+        setRateError(result.error || 'Could not calculate delivery charge')
+        setDeliveryQuote({ deliveryPrice: 0, success: true })
+      }
+    } catch (error) {
+      setRateError(error.message || 'Could not calculate delivery charge')
+      setDeliveryQuote({ deliveryPrice: 0, success: true })
+    } finally {
+      setLoadingRate(false)
     }
-  ]
+  }, [shippingAddress?.pincode, cartItems, getCartTotal])
+
+  useEffect(() => {
+    loadShippingRate()
+  }, [loadShippingRate])
+
+  const deliveryPrice = deliveryQuote?.deliveryPrice ?? 0
+  const finalTotal = getCartTotal() + deliveryPrice
+
+  const deliveryDescription = loadingRate
+    ? 'Calculating delivery charge for your pincode…'
+    : rateError
+      ? rateError
+      : deliveryQuote?.freeShipping
+        ? 'Free delivery on your order'
+        : deliveryQuote?.estimatedDelivery
+          ? `Estimated delivery: ${deliveryQuote.estimatedDelivery}`
+          : deliveryQuote?.courierName
+            ? `Via ${deliveryQuote.courierName}`
+            : 'Standard delivery to your address'
 
   const handleContinue = () => {
-    const deliveryData = {
-      selectedDelivery,
-      deliveryInstructions,
-      deliveryPrice: deliveryOptions.find(opt => opt.id === selectedDelivery)?.price || 0
-    }
-    localStorage.setItem('deliveryInfo', JSON.stringify(deliveryData))
-    // Navigate to checkout payment page for Razorpay integration
+    if (loadingRate) return
+
+    saveDeliveryInfo(
+      { selectedDelivery: 'standard', deliveryInstructions },
+      { ...deliveryQuote, cod: false }
+    )
     navigate('/checkout/payment')
   }
 
@@ -60,86 +94,26 @@ function CheckoutDelivery() {
     )
   }
 
-  const selectedDeliveryOption = deliveryOptions.find(opt => opt.id === selectedDelivery)
-  const deliveryPrice = selectedDeliveryOption?.price || 0
-  const finalTotal = getCartTotal() + deliveryPrice
-
-  const buildPaymentLink = () => {
-    if (!PAYMENT_PAGE_URL) return ''
-    const params = new URLSearchParams()
-    if (shippingAddress?.email) params.set('prefill[email]', shippingAddress.email)
-    if (shippingAddress?.phone) params.set('prefill[contact]', shippingAddress.phone)
-    if (shippingAddress?.firstName || shippingAddress?.lastName) params.set('prefill[name]', `${shippingAddress.firstName || ''} ${shippingAddress.lastName || ''}`.trim())
-    params.set('amount', String(Math.max(1, Math.round(finalTotal))))
-    return PAYMENT_PAGE_URL.includes('?') ? `${PAYMENT_PAGE_URL}&${params.toString()}` : `${PAYMENT_PAGE_URL}?${params.toString()}`
-  }
-
-  const openLink = () => {
-    if (PAYMENT_PAGE_URL) {
-      const url = buildPaymentLink()
-      if (!url) { alert('Payment Page URL not configured. Set VITE_RZP_PAYMENT_PAGE_URL'); return }
-      window.open(url, '_blank')
-      return
-    }
-    // Fallback: use API-generated payment link
-    createPaymentLink()
-  }
-
-  const emailLink = () => {
-    const url = lastLink || buildPaymentLink()
-    if (!url) return
-    const to = shippingAddress?.email || ''
-    const subject = encodeURIComponent('Complete your payment - Amrutha Bindu')
-    const body = encodeURIComponent(`Hello ${shippingAddress?.firstName || ''},\n\nPlease complete your payment for order total ₹${finalTotal}.\nPayment link: ${url}\n\nThank you!`)
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`
-  }
-
-  const whatsappLink = () => {
-    const url = lastLink || buildPaymentLink()
-    if (!url) return
-    const phone = (shippingAddress?.phone || '').replace(/\D/g, '')
-    const text = encodeURIComponent(`Payment link for Amrutha Bindu (₹${finalTotal}): ${url}`)
-    const api = phone ? `https://api.whatsapp.com/send?phone=91${phone}&text=${text}` : `https://api.whatsapp.com/send?text=${text}`
-    window.open(api, '_blank')
-  }
-
-  async function createPaymentLink(silent = false) {
-    try {
-      const r = await fetch(CREATE_LINK_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: finalTotal,
-          name: `${shippingAddress?.firstName || ''} ${shippingAddress?.lastName || ''}`.trim(),
-          email: shippingAddress?.email,
-          phone: shippingAddress?.phone,
-          description: 'Order Payment',
-          referenceId: `ref_${Date.now()}`
-        })
-      })
-      const data = await r.json()
-      if (!r.ok) throw new Error(data?.error || 'Failed to create link')
-      setLastLink(data.payment_link)
-      if (!silent) {
-        window.open(data.payment_link, '_blank')
-      } else {
-        alert('Payment link sent automatically via Razorpay email/SMS (if enabled).')
-      }
-    } catch (e) {
-      alert(e?.message || 'Failed to create payment link')
-    }
-  }
-
-  const copyLink = async () => {
-    const url = lastLink || buildPaymentLink()
-    if (!url) return
-    try { await navigator.clipboard.writeText(url); alert('Payment link copied'); } catch { alert(url) }
+  if (!shippingAddress?.pincode) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#F5F5DC] via-[#FAF8F3] to-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Address required</h1>
+          <p className="text-gray-600 mb-8">Please enter your delivery address to calculate shipping.</p>
+          <Link
+            to="/checkout/address"
+            className="bg-green-800 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Go to Address
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#F5F5DC] via-[#FAF8F3] to-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="flex items-center mb-8">
           <Link
             to="/checkout/address"
@@ -151,79 +125,78 @@ function CheckoutDelivery() {
           <h1 className="text-3xl font-bold text-gray-900">Delivery Options</h1>
         </div>
 
-        {/* Progress Steps */}
         <div className="mb-8">
           <div className="flex items-center justify-center space-x-4">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-green-800 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                1
-              </div>
+              <div className="w-8 h-8 bg-green-800 text-white rounded-full flex items-center justify-center text-sm font-semibold">1</div>
               <span className="ml-2 text-sm font-medium text-gray-600">Address</span>
             </div>
-            <div className="w-16 h-1 bg-green-800"></div>
+            <div className="w-16 h-1 bg-green-800" />
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-green-800 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                2
-              </div>
+              <div className="w-8 h-8 bg-green-800 text-white rounded-full flex items-center justify-center text-sm font-semibold">2</div>
               <span className="ml-2 text-sm font-medium text-green-800">Delivery</span>
             </div>
-            {/* Payment step removed (link flow) */}
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Delivery Options */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center">
                 <Truck className="w-6 h-6 mr-2 text-green-800" />
-                Choose Delivery Option
+                Delivery to {shippingAddress.pincode}
               </h2>
+              <p className="text-sm text-gray-600 mb-6">
+                {shippingAddress.city}, {shippingAddress.state}
+              </p>
 
               <div className="space-y-4 mb-8">
-                {deliveryOptions.map((option) => (
-                  <div
-                    key={option.id}
-                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                      selectedDelivery === option.id
-                        ? 'border-green-800 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => setSelectedDelivery(option.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className={`p-2 rounded-lg ${
-                          selectedDelivery === option.id ? 'bg-green-800 text-white' : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {option.icon}
-                        </div>
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <h3 className="font-semibold text-gray-900">{option.name}</h3>
-                            {option.popular && (
-                              <span className="bg-green-800 text-white text-xs px-2 py-1 rounded-full">
-                                Popular
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-gray-600">{option.description}</p>
-                        </div>
+                <div className="border-2 border-green-800 bg-green-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-2 rounded-lg bg-green-800 text-white">
+                        <Truck className="w-6 h-6" />
                       </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-gray-900">
-                          {option.price === 0 ? 'FREE' : `₹${option.price}`}
-                        </div>
-                        {selectedDelivery === option.id && (
-                          <CheckCircle className="w-5 h-5 text-green-800 ml-auto mt-1" />
+                      <div>
+                        <h3 className="font-semibold text-gray-900">Standard Delivery</h3>
+                        <p className="text-sm text-gray-600 mt-1">{deliveryDescription}</p>
+                        {deliveryQuote?.weightKg && !loadingRate && (
+                          <p className="text-xs text-gray-500 mt-1">Package weight: ~{deliveryQuote.weightKg} kg</p>
                         )}
                       </div>
                     </div>
+                    <div className="text-right">
+                      {loadingRate ? (
+                        <Loader2 className="w-6 h-6 animate-spin text-green-800 ml-auto" />
+                      ) : (
+                        <>
+                          <div className="text-lg font-bold text-gray-900">
+                            {formatDeliveryPrice(deliveryPrice)}
+                          </div>
+                          <CheckCircle className="w-5 h-5 text-green-800 ml-auto mt-1" />
+                        </>
+                      )}
+                    </div>
                   </div>
-                ))}
+                </div>
+
+                {rateError && (
+                  <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p>{rateError}</p>
+                      <button
+                        type="button"
+                        onClick={loadShippingRate}
+                        className="underline font-medium mt-1"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Delivery Instructions */}
               <div className="mb-8">
                 <label htmlFor="instructions" className="block text-sm font-medium text-gray-700 mb-2">
                   Delivery Instructions (Optional)
@@ -238,42 +211,31 @@ function CheckoutDelivery() {
                 />
               </div>
 
-              {/* Delivery Info */}
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h3 className="font-semibold text-blue-900 mb-2">Delivery Information</h3>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• We deliver to all major cities across India</li>
+                  <li>• Delivery charge is calculated live for your pincode via Shiprocket</li>
                   <li>• Orders are processed within 24 hours</li>
                   <li>• You will receive SMS updates about your order</li>
-                  <li>• Free returns within 30 days</li>
+                  <li>• COD orders may have a slightly different delivery charge at payment</li>
                 </ul>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-3 mt-6">
-                <button
-                  onClick={handleContinue}
-                  className="w-full bg-green-800 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors"
-                >
-                  Continue to Payment
-                </button>
-               
-              </div>
-
-              {PAYMENT_PAGE_URL && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  
-                </div>
-              )}
+              <button
+                onClick={handleContinue}
+                disabled={loadingRate}
+                className="w-full mt-6 bg-green-800 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingRate ? 'Calculating delivery…' : 'Continue to Payment'}
+              </button>
             </div>
           </div>
 
-          {/* Order Summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md sticky top-4">
               <div className="p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h2>
-                
-                {/* Cart Items */}
+
                 <div className="space-y-4 mb-6">
                   {cartItems.map((item) => (
                     <div key={`${item.id}-${item.size}`} className="flex items-center space-x-3">
@@ -302,36 +264,29 @@ function CheckoutDelivery() {
                     <span className="text-gray-600">Subtotal:</span>
                     <span className="font-medium">₹{getCartTotal()}</span>
                   </div>
-                  
+
                   <div className="flex justify-between text-green-600">
                     <span>You Save:</span>
                     <span className="font-medium">₹{getCartSavings()}</span>
                   </div>
-                  
+
                   <div className="flex justify-between">
                     <span className="text-gray-600">Delivery:</span>
                     <span className="font-medium">
-                      {deliveryPrice === 0 ? (
-                        <span className="text-green-600">FREE</span>
+                      {loadingRate ? (
+                        <span className="text-gray-500">Calculating…</span>
                       ) : (
-                        `₹${deliveryPrice}`
+                        formatDeliveryPrice(deliveryPrice)
                       )}
                     </span>
                   </div>
-                  
+
                   <div className="border-t border-gray-200 pt-4">
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total:</span>
-                      <span>₹{finalTotal}</span>
+                      <span>{loadingRate ? '…' : `₹${finalTotal}`}</span>
                     </div>
                   </div>
-                </div>
-
-                {/* Delivery Details */}
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-semibold text-gray-900 mb-2">Selected Delivery</h3>
-                  <p className="text-sm text-gray-600">{selectedDeliveryOption?.name}</p>
-                  <p className="text-sm text-gray-600">{selectedDeliveryOption?.description}</p>
                 </div>
               </div>
             </div>

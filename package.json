@@ -9,7 +9,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "node server/index.js"
+    "server": "node server/index.js",
+    "test:shiprocket": "node scripts/test-shiprocket-order.mjs"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0",

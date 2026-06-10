@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import Home from '../pages/Home'
 import Products from '../pages/Products'
 import ProductDetail from '../pages/ProductDetail'
@@ -32,9 +32,9 @@ import BundlePage from '../pages/BundlePage'
 function Routers() {
   const navigate = useNavigate()
 
-  const handleContinueAsGuest = () => {
+  const handleContinueAsGuest = useCallback(() => {
     navigate('/checkout/address')
-  }
+  }, [navigate])
 
   return (
     <div>
