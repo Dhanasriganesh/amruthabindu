@@ -24,7 +24,8 @@ function CheckoutPayment() {
   const [shippingAddress, setShippingAddress] = useState(null)
   const [updatingDeliveryRate, setUpdatingDeliveryRate] = useState(false)
 
-  const RZP_KEY_ID = import.meta.env.VITE_RZP_KEY_ID || 'rzp_test_RQExe4U0EyrYxr'
+  const RZP_KEY_ID =
+    import.meta.env.VITE_RAZORPAY_KEY_ID || import.meta.env.VITE_RZP_KEY_ID || ''
   const PAYMENT_PAGE_URL = import.meta.env.VITE_RZP_PAYMENT_PAGE_URL || ''
 
   useEffect(() => {
@@ -222,14 +223,18 @@ function CheckoutPayment() {
       return
     }
 
+    if (!RZP_KEY_ID) {
+      alert('Razorpay is not configured. Set VITE_RAZORPAY_KEY_ID in your environment.')
+      return
+    }
+
     setIsProcessing(true)
 
     try {
       const ok = await loadRazorpayScript()
       if (!ok) throw new Error('Razorpay SDK failed to load')
 
-      // Create order server-side (recommended Razorpay flow)
-      const orderRes = await fetch('/api/razorpay/create-order', {
+      const orderRes = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: amt, receipt: `order_${Date.now()}` }),
@@ -240,7 +245,8 @@ function CheckoutPayment() {
         throw new Error(err.error || 'Failed to create payment order. Is the backend server running on port 3001?')
       }
 
-      const { orderId: razorpayOrderId } = await orderRes.json()
+      const orderData = await orderRes.json()
+      const razorpayOrderId = orderData.order_id || orderData.orderId
 
       const options = {
         key: RZP_KEY_ID,
@@ -541,14 +547,38 @@ function CheckoutPayment() {
   }
 
   const handlePaymentSuccess = async (response) => {
-    const orderId = response.razorpay_order_id || `order_${Date.now()}`
-    await finalizeSuccessfulOrder({
-      orderId,
-      paymentId: response.razorpay_payment_id,
-      method: 'razorpay',
-      paymentMethodLabel: 'Razorpay',
-      successMessage: 'Payment successful! Invoice downloaded.',
-    })
+    setIsProcessing(true)
+    try {
+      const verifyRes = await fetch('/api/verify-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          razorpay_order_id: response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature: response.razorpay_signature,
+        }),
+      })
+
+      if (!verifyRes.ok) {
+        const err = await verifyRes.json().catch(() => ({}))
+        throw new Error(err.error || 'Payment verification failed. Your payment was not confirmed.')
+      }
+
+      const orderId = response.razorpay_order_id || `order_${Date.now()}`
+      await finalizeSuccessfulOrder({
+        orderId,
+        paymentId: response.razorpay_payment_id,
+        method: 'razorpay',
+        paymentMethodLabel: 'Razorpay',
+        successMessage: 'Payment successful! Invoice downloaded.',
+      })
+    } catch (error) {
+      console.error('Payment verification failed:', error)
+      alert(error?.message || 'Payment verification failed. Please contact support if you were charged.')
+      handlePaymentFailed(response, error?.message || 'Payment verification failed')
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   if (cartItems.length === 0) {

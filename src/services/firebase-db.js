@@ -140,16 +140,27 @@ export async function getGuestOrdersByEmail(email) {
 
 // ==================== USER CART ====================
 
+/** Firestore rejects `undefined`; normalize nested cart payloads before write. */
+function sanitizeForFirestore(value) {
+  if (value === undefined) return null
+  if (value === null || typeof value !== 'object') return value
+  if (Array.isArray(value)) return value.map(sanitizeForFirestore)
+  return Object.fromEntries(
+    Object.entries(value).map(([key, val]) => [key, sanitizeForFirestore(val)])
+  )
+}
+
 export async function saveCartSnapshot(userId, items) {
   if (!userId || !db || !isFirebaseConfigured()) return null
 
   try {
+    const sanitizedItems = Array.isArray(items) ? items.map(sanitizeForFirestore) : []
     await setDoc(
       doc(db, 'user_carts', userId),
-      { user_id: userId, items, updated_at: new Date().toISOString() },
+      { user_id: userId, items: sanitizedItems, updated_at: new Date().toISOString() },
       { merge: true }
     )
-    return { user_id: userId, items }
+    return { user_id: userId, items: sanitizedItems }
   } catch (error) {
     console.error('❌ Error saving cart:', error)
     return null

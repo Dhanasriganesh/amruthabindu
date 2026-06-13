@@ -44,8 +44,13 @@ export async function resolvePickupLocation() {
   return cachedPickupLocation
 }
 
+export function isShiprocketEnabled() {
+  const flag = String(process.env.SHIPROCKET_ENABLED ?? 'true').trim().toLowerCase()
+  return !['false', '0', 'no', 'off'].includes(flag)
+}
+
 export function isShiprocketConfigured() {
-  return Boolean(SHIPROCKET_EMAIL && SHIPROCKET_PASSWORD)
+  return isShiprocketEnabled() && Boolean(SHIPROCKET_EMAIL && SHIPROCKET_PASSWORD)
 }
 
 export async function getShiprocketToken(forceRefresh = false) {
@@ -281,13 +286,13 @@ export async function getShippingQuote({
     }
   }
 
-  const { estimateCartWeightKg } = await import('./cart-weight.js')
+  const { estimateCartWeightKg, billableWeightKg } = await import('./cart-weight.js')
   const pin = String(deliveryPincode || '').replace(/\D/g, '').slice(0, 6)
   if (pin.length !== 6) {
     return { success: false, error: 'Valid 6-digit delivery pincode required' }
   }
 
-  const weight = weightKg || estimateCartWeightKg(items)
+  const weight = billableWeightKg(items, weightKg)
   const freeAbove = parseFloat(process.env.FREE_SHIPPING_MIN_ORDER || '0')
   if (freeAbove > 0 && orderValue >= freeAbove) {
     return {
@@ -297,58 +302,88 @@ export async function getShippingQuote({
       estimatedDelivery: null,
       courierName: null,
       weightKg: weight,
-      pickupPincode: await getPickupPincode(),
+      pickupPincode: await getPickupPincode().catch(() => null),
       deliveryPincode: pin,
     }
   }
 
-  const pickupPincode = await getPickupPincode()
-  const params = new URLSearchParams({
-    pickup_postcode: pickupPincode,
-    delivery_postcode: pin,
-    cod: cod ? '1' : '0',
-    weight: String(Math.max(0.1, weight)),
-  })
+  try {
+    const pickupPincode = await getPickupPincode()
+    const params = new URLSearchParams({
+      pickup_postcode: pickupPincode,
+      delivery_postcode: pin,
+      cod: cod ? '1' : '0',
+      weight: String(weight),
+    })
+    if (orderValue > 0) {
+      params.set('declared_value', String(Math.round(orderValue)))
+    }
 
-  const response = await shiprocketFetch(`/courier/serviceability?${params}`, { method: 'GET' })
-  const data = await response.json()
+    const response = await shiprocketFetch(`/courier/serviceability?${params}`, { method: 'GET' })
+    const data = await response.json()
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return {
+        success: false,
+        skipped: true,
+        deliveryPrice: 0,
+        error: data?.message || 'Could not fetch shipping rate',
+        details: data,
+      }
+    }
+
+    const companies = data?.data?.available_courier_companies || []
+    if (!companies.length) {
+      return {
+        success: false,
+        error: 'Delivery is not available for this pincode. Please try a different address.',
+      }
+    }
+
+    const sorted = [...companies].sort(
+      (a, b) => parseFloat(a.rate || a.freight_charge || 0) - parseFloat(b.rate || b.freight_charge || 0)
+    )
+
+    const rateMode = (process.env.SHIPPING_RATE_MODE || 'recommended').toLowerCase()
+    const recommendedId =
+      data?.data?.recommended_courier_company_id ?? data?.data?.shiprocket_recommended_courier_id
+
+    let selected = sorted[0]
+    if (rateMode === 'recommended' && recommendedId != null) {
+      const recommended = companies.find(
+        (c) => String(c.courier_company_id) === String(recommendedId)
+      )
+      if (recommended) selected = recommended
+    }
+
+    let price = parseFloat(selected.rate || selected.freight_charge || 0)
+
+    const markup = parseFloat(process.env.SHIPPING_MARKUP || '0')
+    if (markup > 0) price += markup
+
+    price = Math.ceil(price)
+
+    return {
+      success: true,
+      deliveryPrice: price,
+      courierName: selected.courier_name || null,
+      estimatedDelivery: selected.etd || selected.estimated_delivery_days || null,
+      weightKg: weight,
+      freeShipping: false,
+      pickupPincode,
+      deliveryPincode: pin,
+      cod: Boolean(cod),
+      rateMode,
+      recommendedCourierId: recommendedId ?? null,
+    }
+  } catch (error) {
+    console.warn('Shiprocket rate lookup failed:', error.message)
     return {
       success: false,
-      error: data?.message || 'Could not fetch shipping rate',
-      details: data,
+      skipped: true,
+      deliveryPrice: 0,
+      error: error.message || 'Could not reach Shiprocket',
+      message: 'Shiprocket unavailable — delivery shown as free for now',
     }
-  }
-
-  const companies = data?.data?.available_courier_companies || []
-  if (!companies.length) {
-    return {
-      success: false,
-      error: 'Delivery is not available for this pincode. Please try a different address.',
-    }
-  }
-
-  const sorted = [...companies].sort(
-    (a, b) => parseFloat(a.rate || a.freight_charge || 0) - parseFloat(b.rate || b.freight_charge || 0)
-  )
-  const cheapest = sorted[0]
-  let price = parseFloat(cheapest.rate || cheapest.freight_charge || 0)
-
-  const markup = parseFloat(process.env.SHIPPING_MARKUP || '0')
-  if (markup > 0) price += markup
-
-  price = Math.ceil(price)
-
-  return {
-    success: true,
-    deliveryPrice: price,
-    courierName: cheapest.courier_name || null,
-    estimatedDelivery: cheapest.etd || cheapest.estimated_delivery_days || null,
-    weightKg: weight,
-    freeShipping: false,
-    pickupPincode,
-    deliveryPincode: pin,
-    cod: Boolean(cod),
   }
 }

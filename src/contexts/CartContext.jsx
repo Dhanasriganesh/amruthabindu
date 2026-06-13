@@ -107,16 +107,15 @@ export const CartProvider = ({ children }) => {
     const cartItem = {
       id: product.id,
       name: product.name,
-      category: product.category,
+      category: product.category ?? null,
       size: size.size,
-      sku: size.sku || null,
-      weight: size.weight || null,
+      sku: size.sku ?? null,
+      weight: size.weight ?? null,
       price: size.price,
       quantity: quantity,
-      image: product.images ? product.images[0] : (product.image || null),
-      maxStock: size.stock,
-      // Include bundle selection if present
-      bundleSelection: size.bundleSelection || null
+      image: product.images ? product.images[0] : (product.image ?? null),
+      maxStock: size.stock ?? null,
+      bundleSelection: size.bundleSelection ?? null,
     }
     dispatch({ type: 'ADD_TO_CART', payload: cartItem })
     setNotificationItem(cartItem)

@@ -41,9 +41,12 @@ export default async function handler(req, res) {
     return res.status(200).json(quote)
   } catch (error) {
     console.error('❌ SERVER: Failed to get shipping rate:', error)
-    return res.status(500).json({
+    return res.status(200).json({
       success: false,
+      skipped: true,
+      deliveryPrice: 0,
       error: error.message || 'Failed to calculate shipping rate',
+      message: 'Shiprocket unavailable — delivery shown as free for now',
     })
   }
 }

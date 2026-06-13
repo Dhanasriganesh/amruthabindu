@@ -44,13 +44,16 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       console.error('❌ Razorpay order creation failed:', data)
-      return res.status(response.status).json({
+      const status =
+        response.status === 401 ? 401 : response.status >= 500 ? 500 : response.status
+      return res.status(status).json({
         error: data?.error?.description || 'Failed to create Razorpay order',
       })
     }
 
     return res.status(200).json({
       success: true,
+      order_id: data.id,
       orderId: data.id,
       amount: data.amount,
       currency: data.currency,

@@ -214,10 +214,10 @@ function CheckoutDelivery() {
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h3 className="font-semibold text-blue-900 mb-2">Delivery Information</h3>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Delivery charge is calculated live for your pincode via Shiprocket</li>
+                  <li>• Delivery charge uses Shiprocket&apos;s recommended courier for your pincode</li>
                   <li>• Orders are processed within 24 hours</li>
                   <li>• You will receive SMS updates about your order</li>
-                  <li>• COD orders may have a slightly different delivery charge at payment</li>
+                  <li>• COD orders show an updated delivery fee on the payment step</li>
                 </ul>
               </div>
 

@@ -6,6 +6,7 @@ import sendFailedPaymentEmailHandler from '../api/send-failed-payment-email.js'
 import sendLeadEmailHandler from '../api/send-lead-email.js'
 import sendBulkEmailHandler from '../api/send-bulk-email.js'
 import createRazorpayOrderHandler from '../api/razorpay/create-order.js'
+import verifyRazorpayPaymentHandler from '../api/razorpay/verify-payment.js'
 import createRazorpayLinkHandler from '../api/razorpay/create-link.js'
 import pushOrderToShiprocketHandler from '../api/push-order-to-shiprocket.js'
 import updateOrderStatusHandler from '../api/update-order-status.js'
@@ -74,10 +75,25 @@ app.post('/api/send-bulk-email', async (req, res) => {
   }
 })
 
-app.post('/api/razorpay/create-order', async (req, res) => {
-  console.log('🌐 SERVER: Received request to /api/razorpay/create-order')
+const registerRazorpayOrderRoute = (path) => {
+  app.post(path, async (req, res) => {
+    console.log(`🌐 SERVER: Received request to ${path}`)
+    try {
+      await createRazorpayOrderHandler(req, res)
+    } catch (error) {
+      console.error('🌐 SERVER ERROR:', error)
+      res.status(500).json({ error: error.message || 'Internal server error' })
+    }
+  })
+}
+
+registerRazorpayOrderRoute('/api/create-order')
+registerRazorpayOrderRoute('/api/razorpay/create-order')
+
+app.post('/api/verify-payment', async (req, res) => {
+  console.log('🌐 SERVER: Received request to /api/verify-payment')
   try {
-    await createRazorpayOrderHandler(req, res)
+    await verifyRazorpayPaymentHandler(req, res)
   } catch (error) {
     console.error('🌐 SERVER ERROR:', error)
     res.status(500).json({ error: error.message || 'Internal server error' })
@@ -154,6 +170,7 @@ app.listen(PORT, () => {
   console.log(`   SHIPROCKET_API_EMAIL: ${process.env.SHIPROCKET_API_EMAIL || 'NOT SET'}`)
   console.log(`   SHIPROCKET_API_PASSWORD: ${process.env.SHIPROCKET_API_PASSWORD ? '***SET***' : 'NOT SET'}`)
   console.log(`   SHIPROCKET_PICKUP_LOCATION: ${process.env.SHIPROCKET_PICKUP_LOCATION || 'Primary'}`)
-  console.log(`   Shiprocket ready: ${isShiprocketConfigured() ? 'YES — orders will sync on checkout' : 'NO — add credentials to .env'}`)
+  console.log(`   SHIPROCKET_ENABLED: ${process.env.SHIPROCKET_ENABLED ?? 'true'}`)
+  console.log(`   Shiprocket ready: ${isShiprocketConfigured() ? 'YES — orders will sync on checkout' : 'NO — disabled or credentials missing'}`)
 })
 

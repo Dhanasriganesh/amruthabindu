@@ -1,4 +1,5 @@
 const DEFAULT_UNIT_KG = parseFloat(process.env.SHIPROCKET_DEFAULT_WEIGHT || '0.5')
+const MIN_BILLABLE_KG = parseFloat(process.env.SHIPROCKET_MIN_WEIGHT || '0.5')
 
 export function parseWeightKg(value) {
   if (value == null || value === '') return null
@@ -28,4 +29,11 @@ export function estimateCartWeightKg(items = []) {
   }
 
   return Math.max(0.1, Math.round(total * 100) / 100)
+}
+
+/** Round up to Shiprocket's 0.5 kg billing slabs (minimum 500 g). */
+export function billableWeightKg(items = [], explicitWeightKg = null) {
+  const raw = explicitWeightKg || estimateCartWeightKg(items)
+  const slabbed = Math.ceil(raw / 0.5) * 0.5
+  return Math.max(MIN_BILLABLE_KG, slabbed)
 }
