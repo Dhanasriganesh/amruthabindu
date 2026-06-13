@@ -87,11 +87,10 @@ const registerRazorpayOrderRoute = (path) => {
   })
 }
 
-registerRazorpayOrderRoute('/api/create-order')
 registerRazorpayOrderRoute('/api/razorpay/create-order')
 
-app.post('/api/verify-payment', async (req, res) => {
-  console.log('🌐 SERVER: Received request to /api/verify-payment')
+app.post('/api/razorpay/verify-payment', async (req, res) => {
+  console.log('🌐 SERVER: Received request to /api/razorpay/verify-payment')
   try {
     await verifyRazorpayPaymentHandler(req, res)
   } catch (error) {

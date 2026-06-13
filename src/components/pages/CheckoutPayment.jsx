@@ -234,7 +234,7 @@ function CheckoutPayment() {
       const ok = await loadRazorpayScript()
       if (!ok) throw new Error('Razorpay SDK failed to load')
 
-      const orderRes = await fetch('/api/create-order', {
+      const orderRes = await fetch('/api/razorpay/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: amt, receipt: `order_${Date.now()}` }),
@@ -549,7 +549,7 @@ function CheckoutPayment() {
   const handlePaymentSuccess = async (response) => {
     setIsProcessing(true)
     try {
-      const verifyRes = await fetch('/api/verify-payment', {
+      const verifyRes = await fetch('/api/razorpay/verify-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
