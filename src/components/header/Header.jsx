@@ -32,7 +32,7 @@ import {
 } from '../../utils/headerContent'
 
 const MOBILE_MENU_ITEMS = [
-  { name: 'Home', href: '/', icon: Home },
+  { name: 'Home', href: '/home', icon: Home },
   { name: 'Shop', href: '/shop', icon: ShoppingBag },
   { name: 'Foods', href: '/shop/foods', icon: Cookie },
   { name: 'Naturals', href: '/shop/naturals', icon: Leaf },
