@@ -7,12 +7,11 @@ import sendLeadEmailHandler from '../api/send-lead-email.js'
 import sendBulkEmailHandler from '../api/send-bulk-email.js'
 import createRazorpayOrderHandler from '../api/razorpay/create-order.js'
 import verifyRazorpayPaymentHandler from '../api/razorpay/verify-payment.js'
-import createRazorpayLinkHandler from '../api/razorpay/create-link.js'
 import pushOrderToShiprocketHandler from '../api/push-order-to-shiprocket.js'
 import updateOrderStatusHandler from '../api/update-order-status.js'
 import checkShiprocketTrackingHandler from '../api/check-shiprocket-tracking.js'
 import getShippingRateHandler from '../api/get-shipping-rate.js'
-import { isShiprocketConfigured } from '../api/lib/shiprocket.js'
+import { isShiprocketConfigured } from '../lib/server/shiprocket.js'
 
 // Load environment variables
 dotenv.config()
@@ -93,16 +92,6 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
   console.log('🌐 SERVER: Received request to /api/razorpay/verify-payment')
   try {
     await verifyRazorpayPaymentHandler(req, res)
-  } catch (error) {
-    console.error('🌐 SERVER ERROR:', error)
-    res.status(500).json({ error: error.message || 'Internal server error' })
-  }
-})
-
-app.post('/api/razorpay/create-link', async (req, res) => {
-  console.log('🌐 SERVER: Received request to /api/razorpay/create-link')
-  try {
-    await createRazorpayLinkHandler(req, res)
   } catch (error) {
     console.error('🌐 SERVER ERROR:', error)
     res.status(500).json({ error: error.message || 'Internal server error' })

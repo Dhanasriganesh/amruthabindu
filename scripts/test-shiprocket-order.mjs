@@ -14,7 +14,7 @@ import {
   shiprocketFetch,
   transformToShiprocketFormat,
   resolvePickupLocation,
-} from '../api/lib/shiprocket.js'
+} from '../lib/server/shiprocket.js'
 
 async function checkPickupLocations() {
   const response = await shiprocketFetch('/settings/company/pickup', { method: 'GET' })

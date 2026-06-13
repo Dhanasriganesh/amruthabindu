@@ -3,7 +3,7 @@ import {
   shiprocketFetch,
   transformToShiprocketFormat,
   resolvePickupLocation,
-} from './lib/shiprocket.js'
+} from '../../lib/server/shiprocket.js'
 
 /**
  * Backend API endpoint to push orders to Shiprocket for delivery fulfillment

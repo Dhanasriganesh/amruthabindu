@@ -1,4 +1,4 @@
-import { getShippingQuote, isShiprocketConfigured } from './lib/shiprocket.js'
+import { getShippingQuote, isShiprocketConfigured } from '../../lib/server/shiprocket.js'
 
 /**
  * Calculate delivery charge for checkout using Shiprocket courier serviceability.
