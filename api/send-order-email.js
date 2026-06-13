@@ -1,5 +1,13 @@
 import nodemailer from 'nodemailer'
 import puppeteer from 'puppeteer'
+import {
+  CONTACT_EMAIL,
+  SUPPORT_EMAIL,
+  PHONE_DISPLAY,
+  SHOP_ADDRESS_FULL,
+  INSTAGRAM_URL,
+  INSTAGRAM_HANDLE,
+} from '../lib/contact.js'
 
 // Logo URL - hosted on the website
 const LOGO_URL = 'https://amruthabindu.in/logo.png'
@@ -161,7 +169,7 @@ function generateInvoicePDF(data) {
     
     <div class="footer">
         <p>Thank you for choosing Amrutha Bindu!</p>
-        <p>For any queries, contact us at: support@amruthabindu.in</p>
+        <p>For any queries, contact us at: ${SUPPORT_EMAIL}</p>
     </div>
 </body>
 </html>`
@@ -330,10 +338,10 @@ function renderCustomerEmail(data) {
                   💚 We're Here to Help
                 </h3>
                 <p style="margin: 0 0 15px 0; color: #555; font-size: 15px; line-height: 1.6;">
-                  If you have any questions about your order or need to make a change, please simply reply to this email or contact us at <a href="mailto:contact@amruthabindu.in" style="color: #2d5f3f; text-decoration: underline;">contact@amruthabindu.in</a>.
+                  If you have any questions about your order or need to make a change, please simply reply to this email or contact us at <a href="mailto:${CONTACT_EMAIL}" style="color: #2d5f3f; text-decoration: underline;">${CONTACT_EMAIL}</a>.
                 </p>
                 <p style="margin: 0; color: #555; font-size: 15px;">
-                  Alternatively, WhatsApp us on <strong style="color: #2d5f3f;">+91 - 7093 121 689</strong>
+                  Alternatively, WhatsApp us on <strong style="color: #2d5f3f;">${PHONE_DISPLAY}</strong>
                 </p>
               </div>
 
@@ -351,7 +359,7 @@ function renderCustomerEmail(data) {
               <!-- P.S. Section -->
               <div style="background-color: #fff9e6; border-left: 4px solid #2d5f3f; padding: 15px; border-radius: 4px;">
                 <p style="margin: 0; color: #555; font-size: 14px; line-height: 1.6;">
-                  <strong>P.S.</strong> Follow your order's journey and discover the stories behind our powders on Instagram <a href="https://www.instagram.com/amruthabindu" style="color: #2d5f3f; text-decoration: underline;">@amruthabindu</a>!
+                  <strong>P.S.</strong> Follow your order's journey and discover the stories behind our powders on Instagram <a href="${INSTAGRAM_URL}" style="color: #2d5f3f; text-decoration: underline;">${INSTAGRAM_HANDLE}</a>!
                 </p>
               </div>
 
@@ -362,10 +370,10 @@ function renderCustomerEmail(data) {
           <tr>
             <td style="background-color: #f9f9f9; padding: 25px 30px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">
-                📧 contact@amruthabindu.in • 📞 +91-7093 121 689
+                📧 ${CONTACT_EMAIL} • 📞 ${PHONE_DISPLAY}
               </p>
               <p style="margin: 0 0 10px 0; color: #999; font-size: 12px;">
-                Plot No. 542, Dr. Prakashrao Nagar, Ghatkesar – 500088, Telangana, India
+                ${SHOP_ADDRESS_FULL}
               </p>
               <p style="margin: 0; color: #999; font-size: 12px;">
                 © ${new Date().getFullYear()} Amrutha Bindu. All rights reserved.

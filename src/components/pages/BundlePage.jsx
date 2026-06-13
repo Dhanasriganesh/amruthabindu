@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, MessageCircle, Gift, Package } from 'lucide-react'
+import { WHATSAPP_PHONE } from '../../config/brand'
 import { fetchProductById, fetchProducts } from '../../services/products'
 import BundleSelector from './BundleSelector'
 
@@ -72,7 +73,7 @@ Thank you!`
     }
 
     const message = generateWhatsAppMessage()
-    const phone = import.meta.env.VITE_WHATSAPP_PHONE || '917337334653'
+    const phone = WHATSAPP_PHONE
     const whatsappUrl = `https://wa.me/${phone}?text=${message}`
     window.open(whatsappUrl, '_blank')
   }

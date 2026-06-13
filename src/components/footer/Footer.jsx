@@ -8,6 +8,14 @@ import {
   mergeHeaderContent,
   readHeaderContentCache,
 } from '../../utils/headerContent'
+import {
+  CONTACT_EMAIL,
+  INSTAGRAM_URL,
+  PHONE_DISPLAY,
+  PHONE_TEL,
+  MAPS_URL,
+  SHOP_ADDRESS_LINES,
+} from '../../config/brand'
 
 function Footer() {
   const currentYear = new Date().getFullYear()
@@ -102,7 +110,7 @@ function Footer() {
                 <Facebook size={16} className="sm:w-[18px] sm:h-[18px]" />
               </a>
               <a 
-                href="https://www.instagram.com/amruthabindu" 
+                href={INSTAGRAM_URL} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="p-2 sm:p-2.5 bg-white/10 hover:bg-[#d4a574] rounded-lg transition-all hover:scale-110"
@@ -111,7 +119,7 @@ function Footer() {
                 <Instagram size={16} className="sm:w-[18px] sm:h-[18px]" />
               </a>
               <a 
-                href="mailto:contact@amruthabindu.in"
+                href={`mailto:${CONTACT_EMAIL}`}
                 className="p-2 sm:p-2.5 bg-white/10 hover:bg-[#d4a574] rounded-lg transition-all hover:scale-110"
                 aria-label="Email"
               >
@@ -217,10 +225,10 @@ function Footer() {
                 <div className="min-w-0">
                   <div className="text-[10px] sm:text-xs text-stone-300 mb-0.5 sm:mb-1">Email Us</div>
                   <a 
-                    href="mailto:contact@amruthabindu.in" 
+                    href={`mailto:${CONTACT_EMAIL}`} 
                     className="text-white hover:text-[#d4a574] transition-colors text-xs sm:text-sm font-medium break-all"
                   >
-                    contact@amruthabindu.in
+                    {CONTACT_EMAIL}
                   </a>
                 </div>
               </div>
@@ -232,10 +240,10 @@ function Footer() {
                 <div>
                   <div className="text-[10px] sm:text-xs text-stone-300 mb-0.5 sm:mb-1">Call Us</div>
                   <a 
-                    href="tel:+917337334653" 
+                    href={`tel:${PHONE_TEL}`} 
                     className="text-white hover:text-[#d4a574] transition-colors text-xs sm:text-sm font-medium"
                   >
-                    +91-7337334653
+                    {PHONE_DISPLAY}
                   </a>
                 </div>
               </div>
@@ -247,10 +255,19 @@ function Footer() {
                 <div>
                   <div className="text-[10px] sm:text-xs text-stone-300 mb-0.5 sm:mb-1">Visit Us</div>
                   <address className="text-white text-xs sm:text-sm not-italic leading-relaxed">
-                    G5, C-Block Emerald Heights,<br />
-                    Annojiguda, Ghatkesar,<br />
-                    Medchal – 500088,<br />
-                    Telangana, India
+                    {SHOP_ADDRESS_LINES.map((line) => (
+                      <span key={line} className="block">
+                        {line}
+                      </span>
+                    ))}
+                    <a
+                      href={MAPS_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-2 text-[#d4a574] hover:underline"
+                    >
+                      View on Google Maps
+                    </a>
                   </address>
                 </div>
               </div>

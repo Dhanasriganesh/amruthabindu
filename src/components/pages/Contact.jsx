@@ -1,6 +1,14 @@
 import React, { useState } from 'react'
 import { Mail, Phone, MapPin, Facebook, Instagram, Send } from 'lucide-react'
 import { saveContactMessage } from '../../services/db'
+import {
+  CONTACT_EMAIL,
+  INSTAGRAM_URL,
+  PHONE_DISPLAY,
+  PHONE_TEL,
+  MAPS_URL,
+  SHOP_ADDRESS_LINES,
+} from '../../config/brand'
 
 function Contact() {
   const [formData, setFormData] = useState({
@@ -84,9 +92,9 @@ function Contact() {
                   <Mail className="w-6 h-6 text-green-800 mt-1" />
                   <div>
                     <h3 className="font-semibold text-gray-900">Email</h3>
-                    <p className="text-gray-600">contact@amruthabindu.in</p>
+                    <p className="text-gray-600">{CONTACT_EMAIL}</p>
                     <a 
-                      href="mailto:contact@amruthabindu.in"
+                      href={`mailto:${CONTACT_EMAIL}`}
                       className="text-green-800 hover:text-green-600 transition-colors"
                     >
                       Send us an email
@@ -97,10 +105,10 @@ function Contact() {
                 <div className="flex items-start space-x-4">
                   <Phone className="w-6 h-6 text-green-800 mt-1" />
                   <div>
-                    <h3 className="font-semibold text-gray-900">Phone</h3>
-                    <p className="text-gray-600">+91-7337334653</p>
+                    <h3 className="font-semibold text-gray-900">Phone / WhatsApp</h3>
+                    <p className="text-gray-600">{PHONE_DISPLAY}</p>
                     <a 
-                      href="tel:+917337334653"
+                      href={`tel:${PHONE_TEL}`}
                       className="text-green-800 hover:text-green-600 transition-colors"
                     >
                       Call us now
@@ -113,10 +121,17 @@ function Contact() {
                   <div>
                     <h3 className="font-semibold text-gray-900">Address</h3>
                     <div className="text-gray-600">
-                      <p>Plot No. 542, Ground Floor</p>
-                      <p>Dr. Prakashrao Nagar, Annojiguda</p>
-                      <p>Ghatkesar – 500088</p>
-                      <p>Telangana, India</p>
+                      {SHOP_ADDRESS_LINES.map((line) => (
+                        <p key={line}>{line}</p>
+                      ))}
+                      <a
+                        href={MAPS_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block mt-2 text-green-800 hover:text-green-600 transition-colors"
+                      >
+                        Open in Google Maps
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -137,7 +152,7 @@ function Contact() {
                   <span>Facebook</span>
                 </a>
                 <a
-                  href="https://www.instagram.com/amruthabindu"
+                  href={INSTAGRAM_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center space-x-2 text-pink-600 hover:text-pink-800 transition-colors"

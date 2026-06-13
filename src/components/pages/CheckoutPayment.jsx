@@ -12,6 +12,7 @@ import {
   sendOrderConfirmationEmail,
 } from '../../services/order-completion'
 import { fetchShippingRate, saveDeliveryInfo, formatDeliveryPrice } from '../../services/shipping-rate'
+import { SUPPORT_EMAIL } from '../../config/brand'
 
 function CheckoutPayment() {
   const navigate = useNavigate()
@@ -191,7 +192,7 @@ function CheckoutPayment() {
     
     <div class="footer">
         <p>Thank you for choosing Amrutha Bindu!</p>
-        <p>For any queries, contact us at: support@amruthabindu.in</p>
+        <p>For any queries, contact us at: ${SUPPORT_EMAIL}</p>
     </div>
 </body>
 </html>`

@@ -5,6 +5,7 @@ import { useCart } from '../../contexts/CartContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { fetchProductById, fetchRelated, fetchProducts } from '../../services/products'
 import { getCategoryLabel, normalizeCategorySlug, SHOP_CATEGORIES } from '../../constants/categories'
+import { WHATSAPP_PHONE } from '../../config/brand'
 import BundleSelector from './BundleSelector'
 
 function ProductDetail() {
@@ -79,7 +80,7 @@ function ProductDetail() {
         return
       }
       // Build WhatsApp message with actual product names
-      const phone = import.meta.env.VITE_WHATSAPP_PHONE || '91XXXXXXXXXX'
+      const phone = WHATSAPP_PHONE
       const catalog = await fetchProducts({})
       const items = selectedBundleProducts.map(id => {
         const p = catalog.find((x) => x.id === id)

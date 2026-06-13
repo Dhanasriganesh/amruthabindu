@@ -3,6 +3,15 @@
  * All templates are dynamic and personalized with customer data
  */
 
+import {
+  CONTACT_EMAIL,
+  PHONE_DISPLAY,
+  SHOP_ADDRESS_FULL,
+  INSTAGRAM_URL,
+  INSTAGRAM_HANDLE,
+  CONTACT_FOOTER_LINE,
+} from '../../lib/contact.js'
+
 // Logo URL - hosted on the website
 const LOGO_URL = 'https://amruthabindu.in/logo.png'
 
@@ -81,8 +90,8 @@ export function abandonedCartTemplate(leadData) {
               </p>
 
               <ul style="margin: 0 0 30px 0; color: #666; font-size: 16px; line-height: 1.8;">
-                <li>Call us: <strong>+91-7337334653</strong></li>
-                <li>Email us: <strong>contact@amruthabindu.in</strong></li>
+                <li>Call us: <strong>+91 81425 54488</strong></li>
+                <li>Email us: <strong>amruthabindutnd@gmail.com</strong></li>
                 <li>Or simply complete your order below</li>
               </ul>
 
@@ -107,7 +116,7 @@ export function abandonedCartTemplate(leadData) {
           <tr>
             <td style="background-color: #f9f9f9; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0; color: #999; font-size: 12px;">
-                Amrutha Bindu • Plot No. 542, Dr. Prakashrao Nagar, Ghatkesar – 500088, Telangana, India
+                Amrutha Bindu • ${SHOP_ADDRESS_FULL}
               </p>
               <p style="margin: 10px 0 0 0; color: #999; font-size: 12px;">
                 © ${new Date().getFullYear()} Amrutha Bindu. All rights reserved.
@@ -193,10 +202,10 @@ export function paymentIssueTemplate(leadData) {
                   <td style="padding: 20px; background-color: #f9f9f9; border-radius: 6px;">
                     <p style="margin: 0 0 15px 0; color: #333; font-size: 18px; font-weight: bold;">📞 Contact Us</p>
                     <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">
-                      <strong>Call:</strong> +91-7337334653
+                      <strong>Call:</strong> +91 81425 54488
                     </p>
                     <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">
-                      <strong>Email:</strong> contact@amruthabindu.in
+                      <strong>Email:</strong> amruthabindutnd@gmail.com
                     </p>
                     <p style="margin: 0; color: #666; font-size: 14px;">
                       <strong>Hours:</strong> Mon-Sat, 9 AM - 6 PM
@@ -226,7 +235,7 @@ export function paymentIssueTemplate(leadData) {
           <tr>
             <td style="background-color: #f9f9f9; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0; color: #999; font-size: 12px;">
-                Amrutha Bindu • contact@amruthabindu.in
+                Amrutha Bindu • amruthabindutnd@gmail.com
               </p>
             </td>
           </tr>
@@ -320,7 +329,7 @@ export function welcomeCustomerTemplate(leadData) {
           <tr>
             <td style="background-color: #f9f9f9; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">
-                📧 contact@amruthabindu.in • 📞 +91-7337334653
+                📧 amruthabindutnd@gmail.com • 📞 +91 81425 54488
               </p>
               <p style="margin: 0; color: #999; font-size: 12px;">
                 © ${new Date().getFullYear()} Amrutha Bindu. All rights reserved.
@@ -424,7 +433,7 @@ export function firstPurchaseFollowUpTemplate(leadData) {
               </table>
 
               <p style="margin: 0 0 30px 0; color: #666; font-size: 16px; line-height: 1.6; text-align: center;">
-                <strong>Questions? Call us: +91-7337334653</strong>
+                <strong>Questions? Call us: +91 81425 54488</strong>
               </p>
 
               <!-- CTA Button -->
@@ -518,7 +527,7 @@ export function contactResponseTemplate(leadData) {
               <ul style="margin: 0 0 30px 0; color: #666; font-size: 16px; line-height: 1.8;">
                 <li>Browse our <a href="https://amruthabindu.in/shop" style="color: #2d5f3f;">product catalog</a></li>
                 <li>Read our <a href="https://amruthabindu.in/about" style="color: #2d5f3f;">brand story</a></li>
-                <li>Follow us on <a href="https://www.instagram.com/amruthabindu" style="color: #2d5f3f;">Instagram</a></li>
+                <li>Follow us on <a href="https://www.instagram.com/amruthabinduthenaturaldrop?igsh=c25qb3pwZ2RocjN6" style="color: #2d5f3f;">Instagram</a></li>
               </ul>
 
               <!-- Contact Info -->
@@ -527,7 +536,7 @@ export function contactResponseTemplate(leadData) {
                   <td style="padding: 20px; background-color: #f9f9f9; border-radius: 6px; text-align: center;">
                     <p style="margin: 0 0 10px 0; color: #333; font-size: 16px; font-weight: bold;">Need Immediate Assistance?</p>
                     <p style="margin: 0; color: #666; font-size: 14px;">
-                      📞 Call: +91-7337334653 (Mon-Sat, 9 AM - 6 PM)
+                      📞 Call: +91 81425 54488 (Mon-Sat, 9 AM - 6 PM)
                     </p>
                   </td>
                 </tr>
@@ -543,7 +552,7 @@ export function contactResponseTemplate(leadData) {
           <tr>
             <td style="background-color: #f9f9f9; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0; color: #999; font-size: 12px;">
-                Amrutha Bindu • contact@amruthabindu.in
+                Amrutha Bindu • amruthabindutnd@gmail.com
               </p>
             </td>
           </tr>
@@ -567,7 +576,7 @@ export function signupWelcomeTemplate(userData) {
   const resetPasswordUrl = userData.resetPasswordUrl || 'https://amruthabindu.in/reset-password'
   const accountUrl = 'https://amruthabindu.in/account'
   const facebookUrl = 'https://www.facebook.com/amruthabindu'
-  const instagramUrl = 'https://www.instagram.com/amruthabindu'
+  const instagramUrl = INSTAGRAM_URL
 
   return {
     subject: 'Welcome to Amrutha Bindu! Your Journey to Natural Wellness Begins Here 🌿',
@@ -717,7 +726,7 @@ export function signupWelcomeTemplate(userData) {
               <!-- P.S. Contact Section -->
               <div style="background-color: #fff9e6; border-left: 4px solid #2d5f3f; padding: 20px; border-radius: 4px;">
                 <p style="margin: 0; color: #555; font-size: 14px; line-height: 1.6;">
-                  <strong>P.S.</strong> Have a question or need help choosing the right product for you? Simply reply to this email or WhatsApp us on <strong style="color: #2d5f3f;">+91 – 7093 121 689</strong> —we love helping our community find their perfect match!
+                  <strong>P.S.</strong> Have a question or need help choosing the right product for you? Simply reply to this email or WhatsApp us on <strong style="color: #2d5f3f;">+91 – 81425 54488</strong> —we love helping our community find their perfect match!
                 </p>
               </div>
 
@@ -728,10 +737,10 @@ export function signupWelcomeTemplate(userData) {
           <tr>
             <td style="background-color: #f9f9f9; padding: 25px 30px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">
-                📧 contact@amruthabindu.in • 📞 +91-7093 121 689
+                📧 amruthabindutnd@gmail.com • 📞 +91 81425 54488
               </p>
               <p style="margin: 0 0 10px 0; color: #999; font-size: 12px;">
-                Plot No. 542, Dr. Prakashrao Nagar, Ghatkesar – 500088, Telangana, India
+                ${SHOP_ADDRESS_FULL}
               </p>
               <p style="margin: 0; color: #999; font-size: 12px;">
                 © ${new Date().getFullYear()} Amrutha Bindu. All rights reserved.
@@ -793,7 +802,7 @@ export function customEmailTemplate(name, customMessage, customSubject = 'Messag
                 <tr>
                   <td style="padding: 20px; background-color: #f9f9f9; border-radius: 6px; text-align: center;">
                     <p style="margin: 0; color: #666; font-size: 14px;">
-                      📞 +91-7337334653 • 📧 contact@amruthabindu.in
+                      📞 +91 81425 54488 • 📧 amruthabindutnd@gmail.com
                     </p>
                   </td>
                 </tr>

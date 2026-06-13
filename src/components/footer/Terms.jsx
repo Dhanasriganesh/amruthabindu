@@ -1,4 +1,9 @@
 import React from 'react'
+import {
+  CONTACT_EMAIL,
+  PHONE_DISPLAY,
+  SHOP_ADDRESS_FULL,
+} from '../../config/brand'
 
 function Terms() {
   return (
@@ -71,9 +76,9 @@ function Terms() {
           <h2 className="text-2xl font-semibold text-gray-900">Contact Us</h2>
           <p>
             Amrutha Bindu<br/>
-            H. No. 16-11-405/65, SBI Officers Colony, Moosarambagh, Hyderabad – 500036.<br/>
-            Whatsapp – +91-7893440628<br/>
-            contact@amruthabindu.in
+            {SHOP_ADDRESS_FULL}<br/>
+            WhatsApp – {PHONE_DISPLAY}<br/>
+            {CONTACT_EMAIL}
           </p>
         </div>
       </div>

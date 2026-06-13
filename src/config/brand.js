@@ -1,8 +1,41 @@
+import {
+  CONTACT_EMAIL as DEFAULT_CONTACT_EMAIL,
+  SUPPORT_EMAIL as DEFAULT_SUPPORT_EMAIL,
+  WHATSAPP_PHONE as DEFAULT_WHATSAPP_PHONE,
+  INSTAGRAM_URL as DEFAULT_INSTAGRAM_URL,
+  INSTAGRAM_HANDLE,
+  PHONE_DISPLAY,
+  PHONE_TEL,
+  WHATSAPP_URL,
+  MAPS_URL,
+  SHOP_ADDRESS_LINES,
+  SHOP_ADDRESS_FULL,
+  SHOP_ADDRESS_MAPS_PLUS,
+  CONTACT_FOOTER_LINE,
+} from '../../lib/contact.js'
+
 export const BRAND_NAME = 'Amrutha Bindu'
 export const BRAND_NAME_UPPER = 'AMRUTHA BINDU'
 export const SITE_URL = import.meta.env.VITE_SITE_URL || 'https://amruthabindu.in'
 export const LOGO_URL = `${SITE_URL}/logo.png`
-export const CONTACT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL || 'contact@amruthabindu.in'
-export const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'support@amruthabindu.in'
-export const INSTAGRAM_URL = 'https://www.instagram.com/amruthabindu'
+
+export const CONTACT_EMAIL =
+  import.meta.env.VITE_CONTACT_EMAIL || DEFAULT_CONTACT_EMAIL
+export const SUPPORT_EMAIL =
+  import.meta.env.VITE_SUPPORT_EMAIL || DEFAULT_SUPPORT_EMAIL
+export const WHATSAPP_PHONE =
+  import.meta.env.VITE_WHATSAPP_PHONE || DEFAULT_WHATSAPP_PHONE
+export const INSTAGRAM_URL = DEFAULT_INSTAGRAM_URL
 export const FACEBOOK_URL = 'https://www.facebook.com/amruthabindu'
+
+export {
+  INSTAGRAM_HANDLE,
+  PHONE_DISPLAY,
+  PHONE_TEL,
+  WHATSAPP_URL,
+  MAPS_URL,
+  SHOP_ADDRESS_LINES,
+  SHOP_ADDRESS_FULL,
+  SHOP_ADDRESS_MAPS_PLUS,
+  CONTACT_FOOTER_LINE,
+}

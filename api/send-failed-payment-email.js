@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer'
 import puppeteer from 'puppeteer'
+import { CONTACT_EMAIL, SUPPORT_EMAIL, PHONE_DISPLAY } from '../lib/contact.js'
 
 // Logo URL - hosted on the website
 const LOGO_URL = 'https://amruthabindu.in/logo.png'
@@ -84,7 +85,7 @@ function renderCustomerFailedEmail(data) {
           <p style="margin:0;">Don't worry! Your order is saved and you can complete the payment anytime. You can:</p>
           <ul style="margin:8px 0 0 20px;">
             <li>Try the payment again with a different card</li>
-            <li>Contact us for assistance at support@amruthabindu.in</li>
+            <li>Contact us for assistance at ${SUPPORT_EMAIL}</li>
             <li>Use UPI, Net Banking, or other payment methods</li>
           </ul>
         </div>
@@ -93,8 +94,8 @@ function renderCustomerFailedEmail(data) {
           <h3 style="margin:0 0 8px 0;color:#0066cc;">Need Help?</h3>
           <p style="margin:0;">Our customer support team is here to help you complete your order. Contact us:</p>
           <ul style="margin:8px 0 0 20px;">
-            <li>Email: support@amruthabindu.in</li>
-            <li>Phone: +91-9876543210</li>
+            <li>Email: ${SUPPORT_EMAIL}</li>
+            <li>Phone: ${PHONE_DISPLAY}</li>
             <li>Reply to this email for immediate assistance</li>
           </ul>
         </div>

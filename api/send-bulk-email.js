@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import { CONTACT_EMAIL, PHONE_DISPLAY, SHOP_ADDRESS_FULL } from '../lib/contact.js'
 
 /**
  * Create email transporter (same as other email APIs)
@@ -84,7 +85,7 @@ ${personalizedMessage}
                 <tr>
                   <td style="padding: 20px; background-color: #f9f9f9; border-radius: 6px; text-align: center;">
                     <p style="margin: 0; color: #666; font-size: 14px;">
-                      📞 +91-7337334653 • 📧 contact@amruthabindu.in
+                      📞 ${PHONE_DISPLAY} • 📧 ${CONTACT_EMAIL}
                     </p>
                   </td>
                 </tr>
@@ -96,7 +97,7 @@ ${personalizedMessage}
           <tr>
             <td style="background-color: #f9f9f9; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0; color: #999; font-size: 12px;">
-                Amrutha Bindu • Plot No. 542, Dr. Prakashrao Nagar, Ghatkesar – 500088, Telangana, India
+                Amrutha Bindu • ${SHOP_ADDRESS_FULL}
               </p>
               <p style="margin: 10px 0 0 0; color: #999; font-size: 12px;">
                 © ${new Date().getFullYear()} Amrutha Bindu. All rights reserved.

@@ -1,4 +1,5 @@
 import React from 'react'
+import { CONTACT_EMAIL } from '../../config/brand'
 
 function Shipping() {
   return (
@@ -8,7 +9,7 @@ function Shipping() {
         <div className="space-y-4 text-gray-700">
           <p>We ship orders within 1-2 business days. Delivery typically takes 3-7 days across India.</p>
           <p>Express options are available at checkout. Tracking details will be sent via email/SMS.</p>
-          <p>For shipping questions, reach out to contact@amruthabindu.in.</p>
+          <p>For shipping questions, reach out to {CONTACT_EMAIL}.</p>
         </div>
       </div>
     </div>
