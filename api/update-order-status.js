@@ -1,4 +1,4 @@
-import { sendStatusEmail } from '../../lib/server/order-status-email.js'
+import { sendStatusEmail } from '../lib/server/order-status-email.js'
 
 /**
  * Update order fulfillment status in Firestore and notify customer
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     console.log('   New Status:', status)
     console.log('   Tracking:', trackingNumber || 'N/A')
 
-    const { getFirestoreDb, findOrderByOrderId } = await import('../../lib/server/firestore-server.js')
+    const { getFirestoreDb, findOrderByOrderId } = await import('../lib/server/firestore-server.js')
     let db
     try {
       db = getFirestoreDb()

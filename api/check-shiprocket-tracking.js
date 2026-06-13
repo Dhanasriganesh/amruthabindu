@@ -3,8 +3,8 @@ import {
   shiprocketFetch,
   mapShiprocketStatusToOurStatus,
   extractTrackingStatus,
-} from '../../lib/server/shiprocket.js'
-import { sendStatusEmail } from '../../lib/server/order-status-email.js'
+} from '../lib/server/shiprocket.js'
+import { sendStatusEmail } from '../lib/server/order-status-email.js'
 
 /**
  * Check order tracking status from Shiprocket and automatically send emails
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
 
     console.log('🔄 SERVER: Checking order tracking status from Shiprocket...')
 
-    const { getFirestoreDb, findOrderByOrderId } = await import('../../lib/server/firestore-server.js')
+    const { getFirestoreDb, findOrderByOrderId } = await import('../lib/server/firestore-server.js')
     let db
     try {
       db = getFirestoreDb()
