@@ -50,7 +50,7 @@
   --spacing-3xl: 4rem;
   
   /* Typography */
-  --font-display: 'Orange Avenue', 'Cormorant Garamond', Georgia, serif;
+  --font-display: 'Cormorant Garamond', Georgia, serif;
   --font-heading: var(--font-display);
   --font-body: 'DM Sans', 'Inter', system-ui, -apple-system, sans-serif;
   
@@ -67,14 +67,7 @@
   --radius-xl: 1rem;
 }
 
-/* Premium Fonts */
-@font-face {
-  font-family: 'Orange Avenue';
-  src: url('/fonts/OrangeAvenue-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
+/* Premium display font — add OrangeAvenue-Regular.woff2 to public/fonts/ and restore @font-face here */
 
 html {
   scroll-behavior: smooth;
