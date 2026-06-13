@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Facebook, Instagram, Mail, Phone, MapPin, Leaf, Heart, Award, ShieldCheck } from 'lucide-react'
+import { Facebook, Instagram, Mail, Phone, MapPin, Leaf, Heart, Award, ShieldCheck, MessageCircle } from 'lucide-react'
 import { loadHeaderContent } from '../../services/cms'
 import {
   DEFAULT_HEADER,
@@ -15,6 +15,7 @@ import {
   PHONE_TEL,
   MAPS_URL,
   SHOP_ADDRESS_LINES,
+  WHATSAPP_URL,
 } from '../../config/brand'
 
 function Footer() {
@@ -117,6 +118,15 @@ function Footer() {
                 aria-label="Instagram"
               >
                 <Instagram size={16} className="sm:w-[18px] sm:h-[18px]" />
+              </a>
+              <a 
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 sm:p-2.5 bg-white/10 hover:bg-[#d4a574] rounded-lg transition-all hover:scale-110"
+                aria-label="WhatsApp"
+              >
+                <MessageCircle size={16} className="sm:w-[18px] sm:h-[18px]" />
               </a>
               <a 
                 href={`mailto:${CONTACT_EMAIL}`}
