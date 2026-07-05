@@ -1,10 +1,127 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
 import {
   normalizeProducts,
   productsNeedCategoryMigration,
 } from '../constants/categories'
 
+const FIRESTORE_DOC_MAX_BYTES = 1_048_576
+const CHUNK_TARGET_BYTES = 900_000
+
+function estimateFirestoreDocBytes(payload) {
+  return new TextEncoder().encode(JSON.stringify(payload)).length
+}
+
+function splitProductsIntoChunks(products) {
+  const chunks = []
+  let current = []
+
+  for (const product of products) {
+    const candidate = [...current, product]
+    const bytes = estimateFirestoreDocBytes({
+      data: candidate,
+      lastUpdated: '',
+      updatedBy: 'admin',
+    })
+
+    if (bytes > CHUNK_TARGET_BYTES && current.length > 0) {
+      chunks.push(current)
+      current = [product]
+    } else if (bytes > FIRESTORE_DOC_MAX_BYTES) {
+      if (current.length > 0) {
+        chunks.push(current)
+        current = []
+      }
+      chunks.push([product])
+    } else {
+      current = candidate
+    }
+  }
+
+  if (current.length > 0) chunks.push(current)
+  return chunks.length ? chunks : [[]]
+}
+
+async function cleanupProductChunks(firestore, fromIndex = 0) {
+  for (let i = fromIndex; ; i++) {
+    const ref = doc(firestore, 'cms', `products_chunk_${i}`)
+    const snap = await getDoc(ref)
+    if (!snap.exists()) break
+    await deleteDoc(ref)
+  }
+}
+
+async function writeProductsToFirestore(firestore, products) {
+  const lastUpdated = new Date().toISOString()
+  const chunks = splitProductsIntoChunks(products)
+
+  if (chunks.length === 1) {
+    const docPayload = { data: chunks[0], lastUpdated, updatedBy: 'admin' }
+    const bytes = estimateFirestoreDocBytes(docPayload)
+    if (bytes > FIRESTORE_DOC_MAX_BYTES) {
+      const mb = (bytes / (1024 * 1024)).toFixed(2)
+      throw new Error(
+        `Product catalog chunk is too large (${mb} MB). Compress images or use fewer images per product.`
+      )
+    }
+
+    await setDoc(doc(firestore, 'cms', 'products'), docPayload)
+    await cleanupProductChunks(firestore, 0)
+    return { chunkCount: 1 }
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunkPayload = {
+      data: chunks[i],
+      chunkIndex: i,
+      lastUpdated,
+      updatedBy: 'admin',
+    }
+    const bytes = estimateFirestoreDocBytes(chunkPayload)
+    if (bytes > FIRESTORE_DOC_MAX_BYTES) {
+      const mb = (bytes / (1024 * 1024)).toFixed(2)
+      throw new Error(
+        `Product chunk ${i + 1} is too large (${mb} MB). Compress images or use fewer images per product.`
+      )
+    }
+    await setDoc(doc(firestore, 'cms', `products_chunk_${i}`), chunkPayload)
+  }
+
+  await setDoc(doc(firestore, 'cms', 'products'), {
+    schemaVersion: 2,
+    chunkCount: chunks.length,
+    lastUpdated,
+    updatedBy: 'admin',
+  })
+
+  await cleanupProductChunks(firestore, chunks.length)
+  return { chunkCount: chunks.length }
+}
+
+async function readProductsFromFirestore(firestore) {
+  const productsRef = doc(firestore, 'cms', 'products')
+  const docSnap = await getDoc(productsRef)
+
+  if (!docSnap.exists()) return null
+
+  const meta = docSnap.data()
+
+  if (meta.schemaVersion === 2 && meta.chunkCount > 0) {
+    const chunkSnaps = await Promise.all(
+      Array.from({ length: meta.chunkCount }, (_, i) =>
+        getDoc(doc(firestore, 'cms', `products_chunk_${i}`))
+      )
+    )
+
+    const products = []
+    for (const snap of chunkSnaps) {
+      if (snap.exists()) products.push(...(snap.data().data || []))
+    }
+    return products
+  }
+
+  return meta.data || []
+}
 function ensureDb() {
   if (!db || !isFirebaseConfigured()) return null
   return db
@@ -22,20 +139,17 @@ export async function saveProducts(products) {
       return { success: true, localOnly: true }
     }
 
-    const productsRef = doc(firestore, 'cms', 'products')
-    await setDoc(productsRef, {
-      data: normalized,
-      lastUpdated: new Date().toISOString(),
-      updatedBy: 'admin'
-    })
-    
-    // Also cache in localStorage for performance
+    const { chunkCount } = await writeProductsToFirestore(firestore, normalized)
+
     localStorage.setItem('products_data', JSON.stringify(normalized))
     localStorage.setItem('admin_products', JSON.stringify(normalized))
-    
-    console.log('✅ Products saved to Firestore')
-    return { success: true, migrated: productsNeedCategoryMigration(products) }
-  } catch (error) {
+
+    console.log(
+      chunkCount > 1
+        ? `✅ Products saved to Firestore (${chunkCount} chunks)`
+        : '✅ Products saved to Firestore'
+    )
+    return { success: true, migrated: productsNeedCategoryMigration(products), chunkCount }  } catch (error) {
     console.error('❌ Error saving products to Firestore:', error)
     return { success: false, error: error.message }
   }
@@ -68,33 +182,29 @@ export async function loadProducts() {
       return cached ? normalizeProducts(JSON.parse(cached)) : []
     }
 
-    const productsRef = doc(firestore, 'cms', 'products')
-    const docSnap = await getDoc(productsRef)
-    
-    if (docSnap.exists()) {
-      const raw = docSnap.data().data || []
-      const products = normalizeProducts(raw)
-
-      if (products.length > 0) {
-        localStorage.setItem('products_data', JSON.stringify(products))
-        localStorage.setItem('admin_products', JSON.stringify(products))
-        console.log('✅ Products loaded from Firestore:', products.length)
-        if (productsNeedCategoryMigration(raw)) {
-          console.log('ℹ️ Legacy categories detected — run migrate in admin or save products to update Firestore')
-        }
-      } else {
-        localStorage.removeItem('products_data')
-        localStorage.removeItem('admin_products')
-        console.log('ℹ️ No products in Firestore cms/products')
-      }
-      return products
+    const raw = await readProductsFromFirestore(firestore)
+    if (raw === null) {
+      localStorage.removeItem('products_data')
+      localStorage.removeItem('admin_products')
+      console.log('ℹ️ No products document in Firestore')
+      return []
     }
 
-    localStorage.removeItem('products_data')
-    localStorage.removeItem('admin_products')
-    console.log('ℹ️ No products document in Firestore')
-    return []
-  } catch (error) {
+    const products = normalizeProducts(raw)
+
+    if (products.length > 0) {
+      localStorage.setItem('products_data', JSON.stringify(products))
+      localStorage.setItem('admin_products', JSON.stringify(products))
+      console.log('✅ Products loaded from Firestore:', products.length)
+      if (productsNeedCategoryMigration(raw)) {
+        console.log('ℹ️ Legacy categories detected — run migrate in admin or save products to update Firestore')
+      }
+    } else {
+      localStorage.removeItem('products_data')
+      localStorage.removeItem('admin_products')
+      console.log('ℹ️ No products in Firestore cms/products')
+    }
+    return products  } catch (error) {
     console.error('❌ Error loading products from Firestore:', error)
     
     // Fallback to localStorage

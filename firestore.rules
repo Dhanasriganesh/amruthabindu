@@ -35,11 +35,35 @@ service cloud.firestore {
     }
 
     // CMS docs store JSON in `data` (products list, home/header maps with base64 image strings).
-    function validCmsWrite(docId) {
-      return request.resource.data.keys().hasAll(['data', 'lastUpdated'])
+    function validProductsIndexWrite() {
+      return request.resource.data.keys().hasAll(['lastUpdated'])
         && request.resource.data.lastUpdated is string
         && (
-          (docId == 'products' && request.resource.data.data is list)
+          request.resource.data.data is list
+          || (
+            request.resource.data.keys().hasAll(['schemaVersion', 'chunkCount'])
+            && request.resource.data.schemaVersion == 2
+            && request.resource.data.chunkCount is int
+            && request.resource.data.chunkCount > 0
+          )
+        );
+    }
+
+    function isProductsChunk(docId) {
+      return docId.matches('products_chunk_[0-9]+');
+    }
+
+    function validProductsChunkWrite() {
+      return request.resource.data.keys().hasAll(['data', 'lastUpdated'])
+        && request.resource.data.lastUpdated is string
+        && request.resource.data.data is list;
+    }
+
+    function validCmsWrite(docId) {
+      return request.resource.data.keys().hasAll(['lastUpdated'])
+        && request.resource.data.lastUpdated is string
+        && (
+          (docId == 'products' && validProductsIndexWrite())
           || (docId == 'homeContent' && request.resource.data.data is map)
           || (
             docId == 'headerContent'
@@ -125,11 +149,14 @@ service cloud.firestore {
 
     match /cms/{docId} {
       allow read: if true;
-      allow create, update: if isAdmin()
-        && docId in ['products', 'homeContent', 'headerContent']
-        && validCmsWrite(docId);
-      allow delete: if isAdmin()
-        && docId in ['products', 'homeContent', 'headerContent'];
+      allow create, update: if isAdmin() && (
+        (docId in ['products', 'homeContent', 'headerContent'] && validCmsWrite(docId))
+        || (isProductsChunk(docId) && validProductsChunkWrite())
+      );
+      allow delete: if isAdmin() && (
+        docId in ['products', 'homeContent', 'headerContent']
+        || isProductsChunk(docId)
+      );
     }
 
     // ─── Storefront content ────────────────────────────────────────────────

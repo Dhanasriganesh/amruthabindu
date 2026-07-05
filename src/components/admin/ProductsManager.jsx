@@ -54,7 +54,7 @@ function ProductsManager() {
       console.log('✅ Products saved to database')
     } else {
       console.error('❌ Failed to save products:', result.error)
-      alert('Warning: Failed to save to database. Changes are cached locally.')
+      alert(`Warning: Failed to save to database. ${result.error || 'Changes are cached locally.'}`)
     }
   }
 

@@ -43,8 +43,7 @@ function ImageManager({ images = [], onChange, title = "Product Images", folder 
     setUploadProgress(0)
 
     try {
-      // Convert to base64 and save directly in DB (no Storage)
-      // Compress first to keep payload reasonable
+      // Compress and store as base64 in Firestore (no Firebase Storage)
       const blob = await compressImage(file, 1200, 0.85)
 
       const dataUrl = await new Promise((resolve, reject) => {
@@ -54,7 +53,6 @@ function ImageManager({ images = [], onChange, title = "Product Images", folder 
         reader.readAsDataURL(blob)
       })
 
-      // Add to images array (dataUrl)
       onChange([...images, dataUrl])
       
       // Reset states
@@ -374,6 +372,7 @@ function ImageManager({ images = [], onChange, title = "Product Images", folder 
         <p>• The first image will be used as the primary/thumbnail image</p>
         <p>• Use arrow buttons to reorder images</p>
         <p>• Upload from device or paste URL</p>
+        <p>• Uploaded images are stored as compressed base64 in Firestore</p>
         <p>• Maximum file size: 5MB • Formats: JPG, PNG, GIF, WebP</p>
       </div>
     </div>
