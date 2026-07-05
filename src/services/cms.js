@@ -127,6 +127,29 @@ function ensureDb() {
   return db
 }
 
+function clearProductsLocalCache() {
+  try {
+    localStorage.removeItem('products_data')
+    localStorage.removeItem('admin_products')
+  } catch (_) {
+    // ignore
+  }
+}
+
+/** localStorage only when Firebase is not configured (dev/offline). */
+function cacheProductsLocally(products) {
+  try {
+    const json = JSON.stringify(products)
+    localStorage.setItem('products_data', json)
+    localStorage.setItem('admin_products', json)
+  } catch (error) {
+    clearProductsLocalCache()
+    throw new Error(
+      'Product data is too large for browser storage (~5 MB limit). Configure Firebase to save to Firestore.'
+    )
+  }
+}
+
 // ==================== PRODUCTS ====================
 
 export async function saveProducts(products) {
@@ -134,22 +157,22 @@ export async function saveProducts(products) {
   try {
     const firestore = ensureDb()
     if (!firestore) {
-      localStorage.setItem('products_data', JSON.stringify(normalized))
-      localStorage.setItem('admin_products', JSON.stringify(normalized))
+      cacheProductsLocally(normalized)
       return { success: true, localOnly: true }
     }
 
     const { chunkCount } = await writeProductsToFirestore(firestore, normalized)
 
-    localStorage.setItem('products_data', JSON.stringify(normalized))
-    localStorage.setItem('admin_products', JSON.stringify(normalized))
+    // Firestore is the source of truth — do not mirror large base64 payloads in localStorage.
+    clearProductsLocalCache()
 
     console.log(
       chunkCount > 1
         ? `✅ Products saved to Firestore (${chunkCount} chunks)`
         : '✅ Products saved to Firestore'
     )
-    return { success: true, migrated: productsNeedCategoryMigration(products), chunkCount }  } catch (error) {
+    return { success: true, migrated: productsNeedCategoryMigration(products), chunkCount }
+  } catch (error) {
     console.error('❌ Error saving products to Firestore:', error)
     return { success: false, error: error.message }
   }
@@ -184,8 +207,7 @@ export async function loadProducts() {
 
     const raw = await readProductsFromFirestore(firestore)
     if (raw === null) {
-      localStorage.removeItem('products_data')
-      localStorage.removeItem('admin_products')
+      clearProductsLocalCache()
       console.log('ℹ️ No products document in Firestore')
       return []
     }
@@ -193,21 +215,19 @@ export async function loadProducts() {
     const products = normalizeProducts(raw)
 
     if (products.length > 0) {
-      localStorage.setItem('products_data', JSON.stringify(products))
-      localStorage.setItem('admin_products', JSON.stringify(products))
+      clearProductsLocalCache()
       console.log('✅ Products loaded from Firestore:', products.length)
       if (productsNeedCategoryMigration(raw)) {
         console.log('ℹ️ Legacy categories detected — run migrate in admin or save products to update Firestore')
       }
     } else {
-      localStorage.removeItem('products_data')
-      localStorage.removeItem('admin_products')
+      clearProductsLocalCache()
       console.log('ℹ️ No products in Firestore cms/products')
     }
-    return products  } catch (error) {
+    return products
+  } catch (error) {
     console.error('❌ Error loading products from Firestore:', error)
-    
-    // Fallback to localStorage
+
     const cached = localStorage.getItem('products_data')
     return cached ? normalizeProducts(JSON.parse(cached)) : []
   }
