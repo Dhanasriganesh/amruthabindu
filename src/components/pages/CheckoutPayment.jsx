@@ -232,8 +232,8 @@ function CheckoutPayment() {
   const handlePayment = async () => {
     const amt = amountPaise()
     if (!deliveryInfo) {
-      alert('Please complete delivery information first')
-      navigate('/checkout/delivery')
+      alert('Please complete your shipping address first')
+      navigate('/checkout/address')
       return
     }
     if (!amt || amt < 100) {
@@ -612,9 +612,9 @@ function CheckoutPayment() {
     <div className="min-h-screen bg-gradient-to-b from-[#F5F5DC] via-[#FAF8F3] to-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center mb-8">
-          <Link to="/checkout/delivery" className="flex items-center text-gray-600 hover:text-green-800 transition-colors mr-4">
+          <Link to="/checkout/address" className="flex items-center text-gray-600 hover:text-green-800 transition-colors mr-4">
             <ArrowLeft size={20} className="mr-2" />
-            Back to Delivery
+            Back to Address
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Payment</h1>
         </div>

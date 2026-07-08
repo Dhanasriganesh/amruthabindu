@@ -1,23 +1,24 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Mail, Lock, User } from 'lucide-react'
+import { Mail, User, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import naturalsImg from '../../assets/naturals.jpg'
 
 function Signup() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { signup } = useAuth()
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' })
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' })
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const validate = () => {
     const nextErrors = {}
     if (!formData.name) nextErrors.name = 'Name is required'
     if (!formData.email) nextErrors.email = 'Email is required'
-    if (!formData.password) nextErrors.password = 'Password is required'
+    if (!formData.password) nextErrors.password = 'Create password is required'
     if (formData.password.length < 6) nextErrors.password = 'Password must be at least 6 characters'
-    if (formData.password !== formData.confirmPassword) nextErrors.confirmPassword = 'Passwords do not match'
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
   }
@@ -79,7 +80,7 @@ function Signup() {
           <p className="text-center text-gray-600 mb-5 text-sm">Create your account to start shopping</p>
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
             <div className="relative">
               <input
                 id="name"
@@ -88,7 +89,7 @@ function Signup() {
                 value={formData.name}
                 onChange={handleChange}
                 className={`w-full px-4 py-2 pr-10 border rounded-md focus:ring-2 focus:ring-[#2d5f3f] focus:border-transparent ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Enter your full name"
+                placeholder="Enter your name"
                 autoComplete="name"
               />
               <User size={16} className="absolute right-3 top-2.5 text-gray-400" />
@@ -115,39 +116,28 @@ function Signup() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">Create password</label>
             <div className="relative">
               <input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={handleChange}
                 className={`w-full px-4 py-2 pr-10 border rounded-md focus:ring-2 focus:ring-[#2d5f3f] focus:border-transparent ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Enter your password"
+                placeholder="Create your password"
                 autoComplete="new-password"
               />
-              <Lock size={16} className="absolute right-3 top-2.5 text-gray-400" />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
             {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
-          </div>
-
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password</label>
-            <div className="relative">
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className={`w-full px-4 py-2 pr-10 border rounded-md focus:ring-2 focus:ring-[#2d5f3f] focus:border-transparent ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Confirm your password"
-                autoComplete="new-password"
-              />
-              <Lock size={16} className="absolute right-3 top-2.5 text-gray-400" />
-            </div>
-            {errors.confirmPassword && <p className="mt-1 text-xs text-red-600">{errors.confirmPassword}</p>}
           </div>
 
           <button
@@ -177,9 +167,9 @@ function Signup() {
         }}
       >
         <img 
-          src="/images/web/loginimg.png" 
-          alt="Amrutha Bindu Products" 
-          className="max-w-md w-full h-auto rounded-xl shadow-2xl object-contain"
+          src={naturalsImg} 
+          alt="Amrutha Bindu natural products" 
+          className="max-w-md w-full h-auto rounded-xl shadow-2xl object-cover"
         />
       </div>
     </div>

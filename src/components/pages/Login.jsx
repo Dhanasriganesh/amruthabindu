@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Mail, Lock } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import naturalsImg from '../../assets/naturals.jpg'
 
 function Login() {
   const navigate = useNavigate()
@@ -146,9 +147,9 @@ function Login() {
         }}
       >
         <img 
-          src="/images/web/loginimg.png" 
-          alt="Amrutha Bindu Products" 
-          className="max-w-md w-full h-auto rounded-xl shadow-2xl object-contain"
+          src={naturalsImg} 
+          alt="Amrutha Bindu natural products" 
+          className="max-w-md w-full h-auto rounded-xl shadow-2xl object-cover"
         />
       </div>
     </div>

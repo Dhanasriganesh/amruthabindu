@@ -6,7 +6,6 @@ import Contact from '../pages/Contact'
 import Cart from '../pages/Cart'
 import About from '../pages/About'
 import CheckoutAddress from '../pages/CheckoutAddress'
-import CheckoutDelivery from '../pages/CheckoutDelivery'
 import CheckoutPayment from '../pages/CheckoutPayment'
 import CheckoutLoginPrompt from '../pages/CheckoutLoginPrompt'
 import OrderSuccess from '../pages/OrderSuccess'
@@ -59,7 +58,7 @@ function Routers() {
             <Route path='/cart' element={<Cart />} />
             <Route path='/checkout' element={<CheckoutLoginPrompt onContinueAsGuest={handleContinueAsGuest} />} />
             <Route path='/checkout/address' element={<CheckoutAddress />} />
-            <Route path='/checkout/delivery' element={<CheckoutDelivery />} />
+            <Route path='/checkout/delivery' element={<Navigate to="/checkout/payment" replace />} />
             <Route path='/checkout/payment' element={<CheckoutPayment />} />
             <Route path='/payment/callback' element={<PaymentCallback />} />
             <Route path='/order-success' element={<OrderSuccess />} />

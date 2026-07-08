@@ -7,6 +7,7 @@ import CouponInput from '../CouponInput'
 import {
   fetchShippingRate,
   formatDeliveryPrice,
+  saveDeliveryInfo,
   computeOrderTotal,
   formatRupee,
 } from '../../services/shipping-rate'
@@ -114,9 +115,27 @@ function CheckoutAddress() {
         }
       }
     } catch {}
-    // Store address data and go to delivery (payment is link-based)
     localStorage.setItem('shippingAddress', JSON.stringify(formData))
-    navigate('/checkout/delivery')
+
+    const pincode = String(formData.pincode || '').trim()
+    if (pincode.length !== 6) {
+      alert('Please enter a valid 6-digit pincode')
+      return
+    }
+    if (loadingRate) {
+      alert('Please wait while we calculate your delivery charge')
+      return
+    }
+    if (rateError || !deliveryQuote?.success) {
+      alert(rateError || 'Could not calculate delivery charge for this pincode. Please check your address.')
+      return
+    }
+
+    saveDeliveryInfo(
+      { selectedDelivery: 'standard', deliveryInstructions: '' },
+      { ...deliveryQuote, cod: false }
+    )
+    navigate('/checkout/payment')
   }
 
   if (cartItems.length === 0) {
@@ -165,7 +184,7 @@ function CheckoutAddress() {
               <div className="w-8 h-8 bg-green-800 text-white rounded-full flex items-center justify-center text-sm font-semibold">
                 2
               </div>
-              <span className="ml-2 text-sm font-medium text-green-800">Delivery</span>
+              <span className="ml-2 text-sm font-medium text-green-800">Payment</span>
             </div>
           </div>
         </div>
