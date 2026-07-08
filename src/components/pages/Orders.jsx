@@ -252,7 +252,7 @@ function Orders() {
                     </div>
 
                     {/* Tracking */}
-                    {(order.tracking_number || order.shiprocket_order_id) && (
+                    {(order.tracking_number || order.nimbuspost_order_id || order.shiprocket_order_id) && (
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <div className="flex items-start gap-2">
                           <Truck size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
@@ -260,7 +260,7 @@ function Orders() {
                             <p className="text-xs font-medium text-gray-900 mb-1">Delivery Tracking</p>
                             {order.tracking_number ? (
                               <a
-                                href={`https://shiprocket.co/tracking/${encodeURIComponent(order.tracking_number)}`}
+                                href={`https://nimbuspost.com/tracking/?awb=${encodeURIComponent(order.tracking_number)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700"

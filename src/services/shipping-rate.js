@@ -1,5 +1,5 @@
 /**
- * Fetch live delivery charge from Shiprocket for checkout.
+ * Fetch live delivery charge from Nimbuspost for checkout.
  */
 export async function fetchShippingRate({
   deliveryPincode,
@@ -51,15 +51,42 @@ export function formatDeliveryPrice(price) {
   return `₹${price}`
 }
 
+const DELIVERY_CGST_RATE = 0.09
+const DELIVERY_SGST_RATE = 0.09
+
+function roundMoney(amount) {
+  return Math.round((Number(amount) || 0) * 100) / 100
+}
+
+/** CGST/SGST at 9% each on delivery charge only (not on product subtotal). */
+export function computeDeliveryGst(deliveryPrice = 0) {
+  const base = Math.max(Number(deliveryPrice) || 0, 0)
+  const cgst = roundMoney(base * DELIVERY_CGST_RATE)
+  const sgst = roundMoney(base * DELIVERY_SGST_RATE)
+  return { cgst, sgst, deliveryGstTotal: roundMoney(cgst + sgst) }
+}
+
+export function computeOrderTotal({ subtotal, couponDiscount = 0, deliveryPrice = 0 }) {
+  const { cgst, sgst, deliveryGstTotal } = computeDeliveryGst(deliveryPrice)
+  const total = roundMoney(subtotal - couponDiscount + deliveryPrice + deliveryGstTotal)
+  return { cgst, sgst, deliveryGstTotal, total }
+}
+
+export function formatRupee(amount) {
+  const value = roundMoney(amount)
+  return value % 1 === 0 ? `₹${value}` : `₹${value.toFixed(2)}`
+}
+
 export function saveDeliveryInfo(base = {}, quote = {}) {
   const deliveryData = {
     selectedDelivery: base.selectedDelivery || 'standard',
     deliveryInstructions: base.deliveryInstructions || '',
     deliveryPrice: quote.deliveryPrice ?? 0,
     courierName: quote.courierName || null,
+    courierId: quote.recommendedCourierId ?? null,
     estimatedDelivery: quote.estimatedDelivery || null,
     weightKg: quote.weightKg || null,
-    shippingSource: quote.skipped ? 'default' : 'shiprocket',
+    shippingSource: quote.skipped ? 'default' : 'nimbuspost',
     cod: Boolean(quote.cod),
   }
   localStorage.setItem('deliveryInfo', JSON.stringify(deliveryData))

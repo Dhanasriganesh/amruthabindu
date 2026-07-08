@@ -1,13 +1,13 @@
 import {
-  isShiprocketConfigured,
-  shiprocketFetch,
-  mapShiprocketStatusToOurStatus,
+  isNimbuspostConfigured,
+  nimbuspostFetch,
+  mapNimbuspostStatusToOurStatus,
   extractTrackingStatus,
-} from '../lib/server/shiprocket.js'
+} from '../lib/server/nimbuspost.js'
 import { sendStatusEmail } from '../lib/server/order-status-email.js'
 
 /**
- * Check order tracking status from Shiprocket and automatically send emails
+ * Check order tracking status from Nimbuspost and automatically send emails
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,19 +15,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    if (!isShiprocketConfigured()) {
-      console.log('ℹ️ SERVER: Shiprocket not configured — skipping tracking sync')
+    if (!isNimbuspostConfigured()) {
+      console.log('ℹ️ SERVER: Nimbuspost not configured — skipping tracking sync')
       return res.status(200).json({
         success: true,
         skipped: true,
         updated: 0,
         emailsSent: 0,
         checked: 0,
-        message: 'Shiprocket not configured — tracking sync skipped',
+        message: 'Nimbuspost not configured — tracking sync skipped',
       })
     }
 
-    console.log('🔄 SERVER: Checking order tracking status from Shiprocket...')
+    console.log('🔄 SERVER: Checking order tracking status from Nimbuspost...')
 
     const { getFirestoreDb, findOrderByOrderId } = await import('../lib/server/firestore-server.js')
     let db
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       .map((doc) => ({ id: doc.id, ...doc.data() }))
       .filter((o) => o.tracking_number && o.fulfillment_status !== 'DELIVERED')
 
-    console.log(`📦 SERVER: Checking ${orders.length} orders for Shiprocket tracking updates`)
+    console.log(`📦 SERVER: Checking ${orders.length} orders for Nimbuspost tracking updates`)
 
     let updated = 0
     let emailsSent = 0
@@ -53,7 +53,9 @@ export default async function handler(req, res) {
     for (const order of orders) {
       try {
         const awb = order.tracking_number
-        const response = await shiprocketFetch(`/courier/track/awb/${encodeURIComponent(awb)}`)
+        const response = await nimbuspostFetch(`/shipments/track/${encodeURIComponent(awb)}`, {
+          method: 'GET',
+        })
 
         if (!response.ok) {
           console.error(`❌ SERVER: Failed to fetch tracking for AWB ${awb}:`, response.status)
@@ -62,7 +64,7 @@ export default async function handler(req, res) {
 
         const trackData = await response.json()
         const { status: rawStatus, awb: awbFromResponse } = extractTrackingStatus(trackData)
-        const newStatus = mapShiprocketStatusToOurStatus(rawStatus)
+        const newStatus = mapNimbuspostStatusToOurStatus(rawStatus)
         const currentStatus = order.fulfillment_status || 'AWAITING_PROCESSING'
 
         if (!newStatus || newStatus === currentStatus) {

@@ -44,7 +44,7 @@ function AdminDashboard() {
 
   const menuItems = [
     { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={20} />, description: 'View sales & stats' },
-    { id: 'orders', label: 'All Orders', icon: <ShoppingBag size={20} />, description: 'Manage orders' },
+    { id: 'orders', label: 'All Orders', icon: <ShoppingBag size={20} />, description: 'Orders, Nimbuspost sync & tracking' },
     { id: 'leads', label: 'Leads', icon: <Users size={20} />, description: 'Track potential customers' },
     { id: 'failed', label: 'Failed Payments', icon: <XCircle size={20} />, description: 'Track failed orders' },
     { id: 'email-marketing', label: 'Email Marketing', icon: <MailPlus size={20} />, description: 'Send bulk emails' },
@@ -138,6 +138,11 @@ function AdminDashboard() {
                 <h2 className="text-xl lg:text-2xl font-bold text-gray-900">
                   {menuItems.find(item => item.id === activeTab)?.label || 'Dashboard'}
                 </h2>
+                {activeTab === 'orders' && (
+                  <p className="text-sm text-gray-500 mt-0.5 hidden sm:block">
+                    Fulfillment via Nimbuspost — sync orders and tracking from here
+                  </p>
+                )}
               </div>
               <div className="hidden sm:flex items-center gap-4">
                 <span className="text-sm text-gray-600">

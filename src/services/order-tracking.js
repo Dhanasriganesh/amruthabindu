@@ -1,6 +1,6 @@
 /**
  * Order Tracking Service
- * Functions to update and sync order statuses with Shiprocket
+ * Functions to update and sync order statuses with Nimbuspost
  */
 
 async function parseJsonResponse(response, action) {
@@ -21,9 +21,9 @@ async function parseJsonResponse(response, action) {
 
 export async function checkTrackingStatus() {
   try {
-    console.log('🔄 Checking tracking status from Shiprocket...')
+    console.log('🔄 Checking tracking status from Nimbuspost...')
 
-    const response = await fetch('/api/check-shiprocket-tracking', {
+    const response = await fetch('/api/check-nimbuspost-tracking', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -33,7 +33,7 @@ export async function checkTrackingStatus() {
     const result = await parseJsonResponse(response, 'check tracking')
 
     if (result.skipped) {
-      console.info('ℹ️ Shiprocket not configured — tracking sync skipped')
+      console.info('ℹ️ Nimbuspost not configured — tracking sync skipped')
       return result
     }
 

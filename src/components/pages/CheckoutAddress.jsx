@@ -1,9 +1,15 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, User, Phone, Mail } from 'lucide-react'
 import { useCart } from '../../contexts/CartContext'
 import { useCoupon } from '../../contexts/CouponContext'
 import CouponInput from '../CouponInput'
+import {
+  fetchShippingRate,
+  formatDeliveryPrice,
+  computeOrderTotal,
+  formatRupee,
+} from '../../services/shipping-rate'
 
 function CheckoutAddress() {
   const navigate = useNavigate()
@@ -20,6 +26,9 @@ function CheckoutAddress() {
     pincode: '',
     country: 'India'
   })
+  const [deliveryQuote, setDeliveryQuote] = useState(null)
+  const [loadingRate, setLoadingRate] = useState(false)
+  const [rateError, setRateError] = useState(null)
 
   useEffect(() => {
     // Prefill from saved profile
@@ -40,6 +49,52 @@ function CheckoutAddress() {
       if (s) setFormData(prev => ({ ...prev, ...s }))
     } catch {}
   }, [])
+
+  const loadShippingRate = useCallback(async () => {
+    const pincode = String(formData.pincode || '').trim()
+    if (pincode.length !== 6 || cartItems.length === 0) {
+      setDeliveryQuote(null)
+      setRateError(null)
+      return
+    }
+
+    setLoadingRate(true)
+    setRateError(null)
+
+    try {
+      const result = await fetchShippingRate({
+        deliveryPincode: pincode,
+        cartItems,
+        orderValue: getCartTotal(),
+        cod: false,
+      })
+
+      if (result.success) {
+        setDeliveryQuote(result)
+      } else {
+        setRateError(result.error || 'Could not calculate delivery charge')
+        setDeliveryQuote(null)
+      }
+    } catch (error) {
+      setRateError(error.message || 'Could not calculate delivery charge')
+      setDeliveryQuote(null)
+    } finally {
+      setLoadingRate(false)
+    }
+  }, [formData.pincode, cartItems, getCartTotal])
+
+  useEffect(() => {
+    loadShippingRate()
+  }, [loadShippingRate])
+
+  const deliveryPrice = deliveryQuote?.deliveryPrice ?? 0
+  const couponDiscount = getDiscountAmount(getCartTotal())
+  const { cgst, sgst, total: finalTotal } = computeOrderTotal({
+    subtotal: getCartTotal(),
+    couponDiscount,
+    deliveryPrice,
+  })
+  const hasPincode = String(formData.pincode || '').trim().length === 6
 
   const handleChange = (e) => {
     setFormData({
@@ -336,14 +391,45 @@ function CheckoutAddress() {
                   )}
                   
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Shipping:</span>
-                    <span className="font-medium text-green-600">FREE</span>
+                    <span className="text-gray-600">Delivery:</span>
+                    <span className="font-medium">
+                      {!hasPincode ? (
+                        <span className="text-gray-500 text-sm">Enter pincode</span>
+                      ) : loadingRate ? (
+                        <span className="text-gray-500">Calculating…</span>
+                      ) : rateError ? (
+                        <span className="text-amber-700 text-sm">Unavailable</span>
+                      ) : (
+                        formatDeliveryPrice(deliveryPrice)
+                      )}
+                    </span>
                   </div>
-                  
+
+                  {hasPincode && deliveryPrice > 0 && !loadingRate && !rateError && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">CGST (9%):</span>
+                        <span className="font-medium">{formatRupee(cgst)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">SGST (9%):</span>
+                        <span className="font-medium">{formatRupee(sgst)}</span>
+                      </div>
+                    </>
+                  )}
+
                   <div className="border-t border-gray-200 pt-4">
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total:</span>
-                      <span>₹{(getCartTotal() - getDiscountAmount(getCartTotal())).toFixed(2)}</span>
+                      <span>
+                        {!hasPincode ? (
+                          formatRupee(getCartTotal() - couponDiscount)
+                        ) : loadingRate ? (
+                          '…'
+                        ) : (
+                          formatRupee(finalTotal)
+                        )}
+                      </span>
                     </div>
                   </div>
                 </div>

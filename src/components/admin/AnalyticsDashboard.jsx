@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { TrendingUp, Users, DollarSign, Package, XCircle, Calendar, BarChart } from 'lucide-react'
+import { TrendingUp, Users, DollarSign, Package, XCircle, Calendar, BarChart, Truck } from 'lucide-react'
 import { getAllOrders } from '../../services/firebase-db'
 import { useAdmin } from '../../contexts/AdminContext'
+import { isSuccessfulOrder } from '../../services/order-completion'
 
 function AnalyticsDashboard() {
   const { adminUser } = useAdmin()
@@ -10,6 +11,9 @@ function AnalyticsDashboard() {
     successfulOrders: 0,
     failedPayments: 0,
     totalRevenue: 0,
+    deliveryRevenue: 0,
+    nimbuspostSynced: 0,
+    awaitingNimbuspostSync: 0,
     uniqueCustomers: 0,
     topProducts: [],
     recentActivity: []
@@ -46,11 +50,12 @@ function AnalyticsDashboard() {
         orders = orders.filter((o) => new Date(o.created_at) >= startDate)
       }
 
-      // Calculate stats
-      // Handle both null and empty string for payment_id
-      const successfulOrders = orders.filter(o => o.payment_id && o.payment_id.trim() !== '')
-      const failedPayments = orders.filter(o => !o.payment_id || o.payment_id.trim() === '')
+      const successfulOrders = orders.filter((o) => isSuccessfulOrder(o))
+      const failedPayments = orders.filter((o) => !isSuccessfulOrder(o))
       const totalRevenue = successfulOrders.reduce((sum, o) => sum + (o.totals?.total || 0), 0)
+      const deliveryRevenue = successfulOrders.reduce((sum, o) => sum + (o.totals?.delivery || 0), 0)
+      const nimbuspostSynced = successfulOrders.filter((o) => o.nimbuspost_order_id).length
+      const awaitingNimbuspostSync = successfulOrders.filter((o) => !o.nimbuspost_order_id).length
 
       // Get unique customers (by email)
       const customerEmails = new Set()
@@ -87,6 +92,9 @@ function AnalyticsDashboard() {
         successfulOrders: successfulOrders.length,
         failedPayments: failedPayments.length,
         totalRevenue,
+        deliveryRevenue,
+        nimbuspostSynced,
+        awaitingNimbuspostSync,
         uniqueCustomers: customerEmails.size,
         topProducts,
         recentActivity: orders.slice(0, 10)
@@ -229,10 +237,12 @@ function AnalyticsDashboard() {
               <p className="text-gray-600 text-center py-8">No recent activity</p>
             ) : (
               <div className="space-y-3">
-                {stats.recentActivity.map((order) => (
+                {stats.recentActivity.map((order) => {
+                  const paid = isSuccessfulOrder(order)
+                  return (
                   <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-3">
-                      {order.payment_id ? (
+                      {paid ? (
                         <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                           <Package className="text-green-600" size={16} />
                         </div>
@@ -246,12 +256,13 @@ function AnalyticsDashboard() {
                           {order.shipping_address?.firstName || ''} {order.shipping_address?.lastName || ''}
                         </p>
                         <p className="text-xs text-gray-600">
-                          {order.payment_id ? 'Placed order' : 'Payment failed'} • {order.items?.length || 0} items
+                          {paid ? 'Placed order' : 'Payment failed'} • {order.items?.length || 0} items
+                          {paid && order.nimbuspost_order_id ? ' • Nimbuspost synced' : paid ? ' • Awaiting Nimbuspost' : ''}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`font-semibold text-sm ${order.payment_id ? 'text-green-600' : 'text-red-600'}`}>
+                      <p className={`font-semibold text-sm ${paid ? 'text-green-600' : 'text-red-600'}`}>
                         ₹{order.totals?.total || 0}
                       </p>
                       <p className="text-xs text-gray-500">
@@ -259,20 +270,20 @@ function AnalyticsDashboard() {
                       </p>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>
 
           {/* Quick Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-600 mb-1">Average Order Value</p>
                   <h3 className="text-2xl font-bold text-gray-900">
-                    ₹{stats.successfulOrders > 0 
-                      ? Math.round(stats.totalRevenue / stats.successfulOrders) 
+                    ₹{stats.successfulOrders > 0
+                      ? Math.round(stats.totalRevenue / stats.successfulOrders)
                       : 0}
                   </h3>
                 </div>
@@ -297,6 +308,27 @@ function AnalyticsDashboard() {
                   <h3 className="text-2xl font-bold text-red-600">{stats.failedPayments}</h3>
                 </div>
                 <XCircle className="text-red-600" size={32} />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Delivery Revenue</p>
+                  <h3 className="text-2xl font-bold text-gray-900">₹{stats.deliveryRevenue.toLocaleString()}</h3>
+                </div>
+                <Truck className="text-blue-600" size={32} />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Nimbuspost Synced</p>
+                  <h3 className="text-2xl font-bold text-green-600">{stats.nimbuspostSynced}</h3>
+                  <p className="text-xs text-gray-500 mt-1">{stats.awaitingNimbuspostSync} pending</p>
+                </div>
+                <Package className="text-green-600" size={32} />
               </div>
             </div>
           </div>

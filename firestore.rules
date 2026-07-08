@@ -102,8 +102,11 @@ service cloud.firestore {
     function shippingFieldsOnlyUpdate() {
       return request.resource.data.diff(resource.data).affectedKeys()
         .hasOnly([
-          'shiprocket_order_id',
-          'shiprocket_shipment_id',
+          'nimbuspost_order_id',
+          'nimbuspost_shipment_id',
+          'nimbuspost_sync_status',
+          'nimbuspost_sync_error',
+          'nimbuspost_courier_name',
           'fulfillment_status',
           'tracking_number'
         ]);

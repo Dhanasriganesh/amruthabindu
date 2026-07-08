@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CreditCard, Shield, Banknote } from 'lucide-react'
+import { ArrowLeft, CreditCard, Shield } from 'lucide-react'
 import { useCart } from '../../contexts/CartContext'
 import { useCoupon } from '../../contexts/CouponContext'
 import { useAuth } from '../../contexts/AuthContext'
@@ -8,10 +8,9 @@ import { saveOrder } from '../../services/db'
 import {
   buildOrderData,
   saveOrderWithCoupon,
-  syncOrderToShiprocket,
   sendOrderConfirmationEmail,
 } from '../../services/order-completion'
-import { fetchShippingRate, saveDeliveryInfo, formatDeliveryPrice } from '../../services/shipping-rate'
+import { fetchShippingRate, saveDeliveryInfo, formatDeliveryPrice, computeOrderTotal, formatRupee } from '../../services/shipping-rate'
 import { SUPPORT_EMAIL } from '../../config/brand'
 
 function CheckoutPayment() {
@@ -20,7 +19,6 @@ function CheckoutPayment() {
   const { items: cartItems, getCartTotal, getCartSavings, clearCart } = useCart()
   const { appliedCoupon, getDiscountAmount } = useCoupon()
   const [isProcessing, setIsProcessing] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState('razorpay')
   const [deliveryInfo, setDeliveryInfo] = useState(null)
   const [shippingAddress, setShippingAddress] = useState(null)
   const [updatingDeliveryRate, setUpdatingDeliveryRate] = useState(false)
@@ -40,14 +38,14 @@ function CheckoutPayment() {
     if (!shippingAddress?.pincode || cartItems.length === 0) return
 
     let cancelled = false
-    async function refreshRateForPaymentMethod() {
+    async function refreshPrepaidDeliveryRate() {
       setUpdatingDeliveryRate(true)
       try {
         const result = await fetchShippingRate({
           deliveryPincode: shippingAddress.pincode,
           cartItems,
           orderValue: getCartTotal(),
-          cod: paymentMethod === 'cod',
+          cod: false,
         })
 
         if (cancelled || !result.success) return
@@ -57,7 +55,7 @@ function CheckoutPayment() {
             selectedDelivery: deliveryInfo?.selectedDelivery || 'standard',
             deliveryInstructions: deliveryInfo?.deliveryInstructions || '',
           },
-          { ...result, cod: paymentMethod === 'cod' }
+          { ...result, cod: false }
         )
         setDeliveryInfo(updated)
       } catch (error) {
@@ -67,21 +65,29 @@ function CheckoutPayment() {
       }
     }
 
-    refreshRateForPaymentMethod()
+    refreshPrepaidDeliveryRate()
     return () => {
       cancelled = true
     }
-  }, [paymentMethod, shippingAddress?.pincode, cartItems, getCartTotal])
+  }, [shippingAddress?.pincode, cartItems, getCartTotal])
 
   const amountPaise = () => {
     const couponDiscount = getDiscountAmount(getCartTotal())
-    const total = getCartTotal() - couponDiscount + (deliveryInfo?.deliveryPrice || 0)
-    return Math.round(Math.max(total, 0) * 100) // Ensure non-negative
+    const { total } = computeOrderTotal({
+      subtotal: getCartTotal(),
+      couponDiscount,
+      deliveryPrice: deliveryInfo?.deliveryPrice || 0,
+    })
+    return Math.round(Math.max(total, 0) * 100)
   }
 
   const getFinalTotal = () => {
     const couponDiscount = getDiscountAmount(getCartTotal())
-    return Math.max(getCartTotal() - couponDiscount + (deliveryInfo?.deliveryPrice || 0), 0)
+    return computeOrderTotal({
+      subtotal: getCartTotal(),
+      couponDiscount,
+      deliveryPrice: deliveryInfo?.deliveryPrice || 0,
+    }).total
   }
 
   const loadRazorpayScript = () => {
@@ -97,9 +103,12 @@ function CheckoutPayment() {
   const buildInvoiceHtml = (orderId, paymentId) => {
     const rows = cartItems.map(it => `<tr><td>${it.name} (${it.size})${it.sku ? `<br/><small>SKU: ${it.sku}</small>` : ''}</td><td>${it.quantity}</td><td>₹${it.price}</td><td>₹${it.price * it.quantity}</td></tr>`).join('')
     const deliv = deliveryInfo?.deliveryPrice || 0
+    const { cgst, sgst, total } = computeOrderTotal({
+      subtotal: getCartTotal(),
+      deliveryPrice: deliv,
+    })
     const subtotal = getCartTotal()
     const savings = getCartSavings()
-    const total = subtotal + deliv
     
     return `<!DOCTYPE html>
 <html>
@@ -184,9 +193,17 @@ function CheckoutPayment() {
             <span>Delivery Charges:</span>
             <span>₹${deliv}</span>
         </div>
+        <div class="total-row">
+            <span>CGST (9% on delivery):</span>
+            <span>₹${cgst.toFixed(2)}</span>
+        </div>
+        <div class="total-row">
+            <span>SGST (9% on delivery):</span>
+            <span>₹${sgst.toFixed(2)}</span>
+        </div>
         <div class="total-row final">
             <span>Grand Total:</span>
-            <span>₹${total}</span>
+            <span>₹${total % 1 === 0 ? total : total.toFixed(2)}</span>
         </div>
     </div>
     
@@ -343,6 +360,11 @@ function CheckoutPayment() {
     const deliv = deliveryInfo?.deliveryPrice || 0
     const orderId = response?.razorpay_order_id || `failed_order_${Date.now()}`
     const couponDiscount = getDiscountAmount(getCartTotal())
+    const { cgst, sgst, deliveryGstTotal, total } = computeOrderTotal({
+      subtotal: getCartTotal(),
+      couponDiscount,
+      deliveryPrice: deliv,
+    })
     
     console.log('📋 Preparing failed order data...')
     console.log('Shipping Address:', shippingAddress)
@@ -358,7 +380,10 @@ function CheckoutPayment() {
         savings: getCartSavings(),
         couponDiscount: couponDiscount,
         delivery: deliv,
-        total: getCartTotal() - couponDiscount + deliv,
+        deliveryCgst: cgst,
+        deliverySgst: sgst,
+        deliveryGstTotal,
+        total,
       },
       deliveryInfo: deliveryInfo || null,
       shippingAddress: shippingAddress || null,
@@ -405,9 +430,11 @@ function CheckoutPayment() {
         customerEmail: shippingAddress?.email,
         customerPhone: shippingAddress?.phone,
         orderItems,
-        orderTotal: getCartTotal() + deliv,
+        orderTotal: total,
         subtotal: getCartTotal(),
         delivery: deliv,
+        deliveryCgst: cgst,
+        deliverySgst: sgst,
         paymentMethod: 'Razorpay',
         customerAddress: address,
         paymentStatus: 'FAILED',
@@ -452,6 +479,11 @@ function CheckoutPayment() {
   }) => {
     const deliv = deliveryInfo?.deliveryPrice || 0
     const couponDiscount = getDiscountAmount(getCartTotal())
+    const { cgst, sgst, deliveryGstTotal, total } = computeOrderTotal({
+      subtotal: getCartTotal(),
+      couponDiscount,
+      deliveryPrice: deliv,
+    })
 
     const orderData = buildOrderData({
       orderId,
@@ -462,7 +494,10 @@ function CheckoutPayment() {
         savings: getCartSavings(),
         couponDiscount,
         delivery: deliv,
-        total: getCartTotal() - couponDiscount + deliv,
+        deliveryCgst: cgst,
+        deliverySgst: sgst,
+        deliveryGstTotal,
+        total,
       },
       deliveryInfo: deliveryInfo || null,
       shippingAddress: shippingAddress || null,
@@ -472,12 +507,17 @@ function CheckoutPayment() {
     })
 
     try {
-      await saveOrderWithCoupon(orderData, appliedCoupon, couponDiscount)
+      const saveResult = await saveOrderWithCoupon(orderData, appliedCoupon, couponDiscount)
+      if (saveResult?.success === false && !saveResult?.skipped && saveResult?.error) {
+        console.warn('⚠️ Order saved but Nimbuspost sync failed:', saveResult.error)
+      }
     } catch (error) {
       console.error('Failed to save order to Firebase:', error)
+      alert(
+        `Your payment was received but we could not save the order.\n\n${error.message}\n\nOrder reference: ${orderId}\n\nPlease contact support with this reference.`
+      )
+      return
     }
-
-    syncOrderToShiprocket(orderData, orderId)
 
     const invoiceHtml = generateInvoiceDownload(orderId, paymentId)
 
@@ -489,6 +529,9 @@ function CheckoutPayment() {
         cartItems,
         getCartTotal,
         deliveryPrice: deliv,
+        deliveryCgst: cgst,
+        deliverySgst: sgst,
+        orderTotal: total,
         paymentMethod: method,
         invoiceHtml,
       })
@@ -510,41 +553,6 @@ function CheckoutPayment() {
     navigate('/order-success', {
       state: { paymentId, orderId, items: itemsForSuccess, paymentMethod: paymentMethodLabel },
     })
-  }
-
-  const handleCodOrder = async () => {
-    if (!deliveryInfo) {
-      alert('Please complete delivery information first')
-      navigate('/checkout/delivery')
-      return
-    }
-    if (!shippingAddress?.phone || !shippingAddress?.address) {
-      alert('Please complete your shipping address before placing a COD order')
-      navigate('/checkout/address')
-      return
-    }
-
-    const confirmed = window.confirm(
-      `Place Cash on Delivery order for ₹${getFinalTotal()}?\n\nPay when your order is delivered.`
-    )
-    if (!confirmed) return
-
-    setIsProcessing(true)
-    try {
-      const orderId = `cod_${Date.now()}`
-      await finalizeSuccessfulOrder({
-        orderId,
-        paymentId: '',
-        method: 'cod',
-        paymentMethodLabel: 'Cash on Delivery',
-        successMessage: 'Order placed successfully! Pay on delivery.',
-      })
-    } catch (error) {
-      console.error('COD order failed:', error)
-      alert(error?.message || 'Failed to place order. Please try again.')
-    } finally {
-      setIsProcessing(false)
-    }
   }
 
   const handlePaymentSuccess = async (response) => {
@@ -595,7 +603,10 @@ function CheckoutPayment() {
   }
 
   const delivPrice = deliveryInfo?.deliveryPrice || 0
-  const finalTotal = getCartTotal() + delivPrice
+  const { cgst, sgst, total: finalTotal } = computeOrderTotal({
+    subtotal: getCartTotal(),
+    deliveryPrice: delivPrice,
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#F5F5DC] via-[#FAF8F3] to-white">
@@ -611,51 +622,8 @@ function CheckoutPayment() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Choose Payment Method</h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('razorpay')}
-                  className={`border-2 rounded-lg p-4 text-left transition-all ${
-                    paymentMethod === 'razorpay'
-                      ? 'border-green-800 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <CreditCard className="w-6 h-6 text-green-800" />
-                    <div>
-                      <p className="font-semibold text-gray-900">Pay Online</p>
-                      <p className="text-sm text-gray-600">UPI, cards, netbanking via Razorpay</p>
-                    </div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('cod')}
-                  className={`border-2 rounded-lg p-4 text-left transition-all ${
-                    paymentMethod === 'cod'
-                      ? 'border-green-800 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Banknote className="w-6 h-6 text-green-800" />
-                    <div>
-                      <p className="font-semibold text-gray-900">Cash on Delivery</p>
-                      <p className="text-sm text-gray-600">Pay when your order arrives</p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              {paymentMethod === 'razorpay' ? (
-              <>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <CreditCard className="w-5 h-5 mr-2 text-green-800" />
-                Razorpay Checkout
-              </h3>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Pay Online</h2>
+              <p className="text-gray-600 mb-6">UPI, cards, and netbanking via Razorpay</p>
 
               <div className="bg-green-50 p-4 rounded-lg mb-6">
                 <div className="flex items-start space-x-3">
@@ -673,38 +641,10 @@ function CheckoutPayment() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <button onClick={handlePayment} disabled={isProcessing} className="w-full bg-green-800 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                  {isProcessing ? 'Processing…' : 'Pay Now'}
-                </button>
-              </div>
-              </>
-              ) : (
-              <div>
-                <div className="bg-amber-50 p-4 rounded-lg mb-6">
-                  <div className="flex items-start space-x-3">
-                    <Banknote className="w-6 h-6 text-amber-800 mt-1" />
-                    <div>
-                      <h3 className="font-semibold text-amber-900 mb-2">Cash on Delivery</h3>
-                      <ul className="text-sm text-amber-800 space-y-1">
-                        <li>• Pay ₹{getFinalTotal()} when your order is delivered</li>
-                        <li>• Order will appear in admin and Shiprocket for fulfillment</li>
-                        <li>• Please keep exact change ready if possible</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={handleCodOrder}
-                  disabled={isProcessing}
-                  className="w-full bg-green-800 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isProcessing ? 'Placing order…' : `Place COD Order — ₹${getFinalTotal()}`}
-                </button>
-              </div>
-              )}
-
-              
+              <button onClick={handlePayment} disabled={isProcessing} className="w-full bg-green-800 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                <CreditCard className="w-5 h-5 mr-2" />
+                {isProcessing ? 'Processing…' : 'Pay Now'}
+              </button>
             </div>
           </div>
 
@@ -753,10 +693,22 @@ function CheckoutPayment() {
                       )}
                     </span>
                   </div>
+                  {delivPrice > 0 && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">CGST (9%):</span>
+                        <span className="font-medium">{formatRupee(cgst)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">SGST (9%):</span>
+                        <span className="font-medium">{formatRupee(sgst)}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="border-t border-gray-200 pt-4">
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total:</span>
-                      <span>₹{finalTotal}</span>
+                      <span>{formatRupee(finalTotal)}</span>
                     </div>
                   </div>
                 </div>

@@ -7,9 +7,9 @@ import { useAuth } from '../../contexts/AuthContext'
 import {
   buildOrderData,
   saveOrderWithCoupon,
-  syncOrderToShiprocket,
   sendOrderConfirmationEmail,
 } from '../../services/order-completion'
+import { computeOrderTotal } from '../../services/shipping-rate'
 
 function PaymentCallback() {
   const navigate = useNavigate()
@@ -28,6 +28,11 @@ function PaymentCallback() {
         const shippingAddress = JSON.parse(localStorage.getItem('shippingAddress') || 'null')
         const deliv = deliveryInfo?.deliveryPrice || 0
         const couponDiscount = getDiscountAmount(getCartTotal())
+        const { cgst, sgst, deliveryGstTotal, total } = computeOrderTotal({
+          subtotal: getCartTotal(),
+          couponDiscount,
+          deliveryPrice: deliv,
+        })
 
         const orderData = buildOrderData({
           orderId,
@@ -38,7 +43,10 @@ function PaymentCallback() {
             savings: getCartSavings(),
             couponDiscount,
             delivery: deliv,
-            total: getCartTotal() - couponDiscount + deliv,
+            deliveryCgst: cgst,
+            deliverySgst: sgst,
+            deliveryGstTotal,
+            total,
           },
           deliveryInfo,
           shippingAddress,
@@ -48,12 +56,16 @@ function PaymentCallback() {
         })
 
         try {
-          await saveOrderWithCoupon(orderData, appliedCoupon, couponDiscount)
+          const saveResult = await saveOrderWithCoupon(orderData, appliedCoupon, couponDiscount)
+          if (saveResult?.success === false && !saveResult?.skipped && saveResult?.error) {
+            console.warn('⚠️ Order saved but Nimbuspost sync failed:', saveResult.error)
+          }
         } catch (error) {
           console.error('Failed to save order to Firebase:', error)
+          setStatus('Order could not be saved. Please contact support if payment was charged.')
+          return
         }
 
-        syncOrderToShiprocket(orderData, orderId)
         // Build invoice HTML and trigger download
         try {
           const rows = cartItems.map(it => `<tr><td>${it.name} (${it.size})</td><td>${it.quantity}</td><td>₹${it.price}</td><td>₹${it.price * it.quantity}</td></tr>`).join('')
@@ -91,6 +103,9 @@ function PaymentCallback() {
               cartItems,
               getCartTotal,
               deliveryPrice: deliv,
+              deliveryCgst: cgst,
+              deliverySgst: sgst,
+              orderTotal: total,
               paymentMethod: 'payment_link',
               invoiceHtml,
             })

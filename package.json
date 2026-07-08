@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server/index.js",
-    "test:shiprocket": "node scripts/test-shiprocket-order.mjs"
+    "test:nimbuspost": "node scripts/test-nimbuspost-order.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",

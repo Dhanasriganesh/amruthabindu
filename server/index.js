@@ -7,11 +7,12 @@ import sendLeadEmailHandler from '../api/send-lead-email.js'
 import sendBulkEmailHandler from '../api/send-bulk-email.js'
 import createRazorpayOrderHandler from '../api/razorpay/create-order.js'
 import verifyRazorpayPaymentHandler from '../api/razorpay/verify-payment.js'
-import pushOrderToShiprocketHandler from '../api/push-order-to-shiprocket.js'
+import pushOrderToNimbuspostHandler from '../api/push-order-to-nimbuspost.js'
+import getOrderCouriersHandler from '../api/get-order-couriers.js'
 import updateOrderStatusHandler from '../api/update-order-status.js'
-import checkShiprocketTrackingHandler from '../api/check-shiprocket-tracking.js'
+import checkNimbuspostTrackingHandler from '../api/check-nimbuspost-tracking.js'
 import getShippingRateHandler from '../api/get-shipping-rate.js'
-import { isShiprocketConfigured } from '../lib/server/shiprocket.js'
+import { isNimbuspostConfigured } from '../lib/server/nimbuspost.js'
 
 // Load environment variables
 dotenv.config()
@@ -98,11 +99,21 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
   }
 })
 
-app.post('/api/push-order-to-shiprocket', async (req, res) => {
-  console.log('🌐 SERVER: Received request to /api/push-order-to-shiprocket')
-  console.log('🌐 SERVER: Order ID:', req.body.orderId)
+app.post('/api/push-order-to-nimbuspost', async (req, res) => {
+  console.log('🌐 SERVER: Received request to /api/push-order-to-nimbuspost')
+  console.log('🌐 SERVER: Order ID:', req.body.orderId, 'Mode:', req.body.mode || 'create')
   try {
-    await pushOrderToShiprocketHandler(req, res)
+    await pushOrderToNimbuspostHandler(req, res)
+  } catch (error) {
+    console.error('🌐 SERVER ERROR:', error)
+    res.status(500).json({ error: error.message || 'Internal server error' })
+  }
+})
+
+app.post('/api/get-order-couriers', async (req, res) => {
+  console.log('🌐 SERVER: Received request to /api/get-order-couriers')
+  try {
+    await getOrderCouriersHandler(req, res)
   } catch (error) {
     console.error('🌐 SERVER ERROR:', error)
     res.status(500).json({ error: error.message || 'Internal server error' })
@@ -130,10 +141,10 @@ app.post('/api/get-shipping-rate', async (req, res) => {
   }
 })
 
-app.post('/api/check-shiprocket-tracking', async (req, res) => {
-  console.log('🌐 SERVER: Received request to /api/check-shiprocket-tracking')
+app.post('/api/check-nimbuspost-tracking', async (req, res) => {
+  console.log('🌐 SERVER: Received request to /api/check-nimbuspost-tracking')
   try {
-    await checkShiprocketTrackingHandler(req, res)
+    await checkNimbuspostTrackingHandler(req, res)
   } catch (error) {
     console.error('🌐 SERVER ERROR:', error)
     res.status(500).json({ error: error.message || 'Internal server error' })
@@ -154,11 +165,13 @@ app.listen(PORT, () => {
   console.log(`   SMTP_PASS: ${process.env.SMTP_PASS ? '***SET***' : 'NOT SET'}`)
   console.log(`   GMAIL_APP_PASSWORD: ${process.env.GMAIL_APP_PASSWORD ? '***SET***' : 'NOT SET'}`)
   console.log(`   ADMIN_EMAIL: ${process.env.ADMIN_EMAIL || 'NOT SET'}`)
-  console.log(`\n📦 Shiprocket Configuration:`)
-  console.log(`   SHIPROCKET_API_EMAIL: ${process.env.SHIPROCKET_API_EMAIL || 'NOT SET'}`)
-  console.log(`   SHIPROCKET_API_PASSWORD: ${process.env.SHIPROCKET_API_PASSWORD ? '***SET***' : 'NOT SET'}`)
-  console.log(`   SHIPROCKET_PICKUP_LOCATION: ${process.env.SHIPROCKET_PICKUP_LOCATION || 'Primary'}`)
-  console.log(`   SHIPROCKET_ENABLED: ${process.env.SHIPROCKET_ENABLED ?? 'true'}`)
-  console.log(`   Shiprocket ready: ${isShiprocketConfigured() ? 'YES — orders will sync on checkout' : 'NO — disabled or credentials missing'}`)
+  console.log(`\n📦 Nimbuspost Configuration:`)
+  console.log(`   NIMBUSPOST_API_EMAIL: ${process.env.NIMBUSPOST_API_EMAIL || 'NOT SET'}`)
+  console.log(`   NIMBUSPOST_API_PASSWORD: ${process.env.NIMBUSPOST_API_PASSWORD ? '***SET***' : 'NOT SET'}`)
+  console.log(`   NIMBUSPOST_PICKUP_PINCODE: ${process.env.NIMBUSPOST_PICKUP_PINCODE || 'NOT SET'}`)
+  console.log(`   NIMBUSPOST_PICKUP_ADDRESS: ${process.env.NIMBUSPOST_PICKUP_ADDRESS ? 'SET' : 'NOT SET'}`)
+  console.log(`   NIMBUSPOST_PICKUP_ADDRESS_ID: ${process.env.NIMBUSPOST_PICKUP_ADDRESS_ID || '(optional)'}`)
+  console.log(`   NIMBUSPOST_ENABLED: ${process.env.NIMBUSPOST_ENABLED ?? 'true'}`)
+  console.log(`   Nimbuspost ready: ${isNimbuspostConfigured() ? 'YES — orders will sync on checkout' : 'NO — disabled or credentials missing'}`)
 })
 

@@ -1,6 +1,6 @@
 import { saveOrder, updateOrderByOrderId } from './firebase-db'
 import { recordCouponUsage } from './coupon-service'
-import { pushOrderToShiprocket, slimOrderForShiprocket } from './shiprocket-integration'
+import { pushOrderToNimbuspost, slimOrderForNimbuspost } from './nimbuspost-integration'
 
 export function isSuccessfulOrder(order) {
   if (order.error_message || order.errorMessage) return false
@@ -47,38 +47,60 @@ export async function saveOrderWithCoupon(orderData, appliedCoupon, couponDiscou
       couponDiscount
     )
   }
+
+  if (isSuccessfulOrder(orderData)) {
+    const syncResult = await syncOrderToNimbuspost(orderData, orderData.orderId)
+    if (syncResult.success) {
+      console.log('✅ Order auto-synced to Nimbuspost:', orderData.orderId)
+    } else if (!syncResult.skipped) {
+      console.warn('⚠️ Nimbuspost auto-sync failed:', orderData.orderId, syncResult.error || syncResult.message)
+    }
+    return syncResult
+  }
+
+  return { success: false, skipped: true }
 }
 
-export function syncOrderToShiprocket(orderData, orderId = orderData.orderId) {
-  if (orderData.errorMessage) return Promise.resolve({ success: false, skipped: true })
+export async function syncOrderToNimbuspost(orderData, orderId = orderData.orderId) {
+  if (orderData.errorMessage) return { success: false, skipped: true }
 
-  return pushOrderToShiprocket(orderData)
-    .then((result) => {
-      if (result.success && result.shiprocketOrderId) {
-        const updates = {
-          shiprocket_order_id: result.shiprocketOrderId.toString(),
-          fulfillment_status: 'AWAITING_PROCESSING',
-        }
-        if (result.shipmentId) {
-          updates.shiprocket_shipment_id = result.shipmentId.toString()
-        }
-        updateOrderByOrderId(orderId, updates).then(({ error }) => {
-          if (error) {
-            console.error('Failed to update order with Shiprocket ID:', error)
-          }
-        })
-        window.dispatchEvent(new Event('ordersUpdated'))
+  try {
+    const result = await pushOrderToNimbuspost(orderData, { mode: 'create' })
+
+    if (result.success && result.nimbuspostOrderId) {
+      const updates = {
+        nimbuspost_order_id: result.nimbuspostOrderId.toString(),
+        nimbuspost_sync_status: result.booked ? 'booked' : 'synced',
+        nimbuspost_sync_error: null,
+        fulfillment_status: result.booked ? 'SHIPPED' : 'AWAITING_PROCESSING',
       }
-      return result
-    })
-    .catch((error) => {
-      console.warn('Shiprocket sync unavailable:', error.message)
-      return { success: false, error: error.message }
-    })
+      if (result.shipmentId) {
+        updates.nimbuspost_shipment_id = result.shipmentId.toString()
+      }
+      if (result.booked && result.awbNumber) {
+        updates.tracking_number = result.awbNumber.toString()
+      }
+      const { error } = await updateOrderByOrderId(orderId, updates)
+      if (error) {
+        console.error('Failed to update order with Nimbuspost ID:', error)
+      }
+      window.dispatchEvent(new Event('ordersUpdated'))
+    } else if (!result.skipped && result.error) {
+      await updateOrderByOrderId(orderId, {
+        nimbuspost_sync_status: 'failed',
+        nimbuspost_sync_error: result.error,
+      }).catch(() => {})
+    }
+
+    return result
+  } catch (error) {
+    console.warn('Nimbuspost sync unavailable:', error.message)
+    return { success: false, error: error.message }
+  }
 }
 
-export function orderDocToShiprocketPayload(order) {
-  return slimOrderForShiprocket(order)
+export function orderDocToNimbuspostPayload(order) {
+  return slimOrderForNimbuspost(order)
 }
 
 export async function sendOrderConfirmationEmail({
@@ -88,6 +110,9 @@ export async function sendOrderConfirmationEmail({
   cartItems,
   getCartTotal,
   deliveryPrice,
+  deliveryCgst = 0,
+  deliverySgst = 0,
+  orderTotal,
   paymentMethod,
   invoiceHtml,
 }) {
@@ -123,9 +148,11 @@ export async function sendOrderConfirmationEmail({
     customerEmail: shippingAddress.email,
     customerPhone: shippingAddress.phone,
     orderItems,
-    orderTotal: getCartTotal() + deliveryPrice,
+    orderTotal: orderTotal ?? getCartTotal() + deliveryPrice,
     subtotal: getCartTotal(),
     delivery: deliveryPrice,
+    deliveryCgst,
+    deliverySgst,
     paymentMethod: paymentLabel,
     customerAddress: address,
     invoiceHtml,

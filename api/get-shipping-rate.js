@@ -1,7 +1,7 @@
-import { getShippingQuote, isShiprocketConfigured } from '../lib/server/shiprocket.js'
+import { getShippingQuote, isNimbuspostConfigured } from '../lib/server/nimbuspost.js'
 
 /**
- * Calculate delivery charge for checkout using Shiprocket courier serviceability.
+ * Calculate delivery charge for checkout using Nimbuspost courier serviceability.
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -9,12 +9,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    if (!isShiprocketConfigured()) {
+    if (!isNimbuspostConfigured()) {
       return res.status(200).json({
         success: false,
         skipped: true,
         deliveryPrice: 0,
-        message: 'Shiprocket not configured — delivery shown as free',
+        message: 'Nimbuspost not configured — delivery shown as free',
       })
     }
 
@@ -43,10 +43,7 @@ export default async function handler(req, res) {
     console.error('❌ SERVER: Failed to get shipping rate:', error)
     return res.status(200).json({
       success: false,
-      skipped: true,
-      deliveryPrice: 0,
       error: error.message || 'Failed to calculate shipping rate',
-      message: 'Shiprocket unavailable — delivery shown as free for now',
     })
   }
 }

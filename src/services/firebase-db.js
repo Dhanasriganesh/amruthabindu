@@ -31,6 +31,29 @@ function sortOrdersByDateDesc(orders) {
   })
 }
 
+/** Strip base64 blobs from cart lines — they exceed Firestore's 1MB doc limit and break checkout saves. */
+export function sanitizeOrderItemsForFirestore(items = []) {
+  return items.map((item) => {
+    const image = item?.image
+    const safeImage =
+      typeof image === 'string' && (image.startsWith('http://') || image.startsWith('https://'))
+        ? image
+        : null
+
+    return {
+      id: item.id ?? null,
+      name: item.name ?? 'Product',
+      size: item.size ?? null,
+      sku: item.sku ?? null,
+      weight: item.weight ?? null,
+      price: item.price ?? 0,
+      quantity: item.quantity ?? 1,
+      ...(item.category ? { category: item.category } : {}),
+      ...(safeImage ? { image: safeImage } : {}),
+    }
+  })
+}
+
 // ==================== CONTACTS ====================
 
 export async function saveContactMessage(message) {
@@ -59,7 +82,7 @@ export async function saveOrder(order) {
     order_id: String(order.orderId || ''),
     payment_id: String(order.paymentId || ''),
     payment_method: String(order.paymentMethod || ''),
-    items: order.items || [],
+    items: sanitizeOrderItemsForFirestore(order.items || []),
     totals: order.totals || {},
     delivery_info: order.deliveryInfo || null,
     shipping_address: order.shippingAddress || null,
@@ -77,21 +100,32 @@ export async function saveOrder(order) {
     sanitizedOrder.fulfillment_status = order.fulfillmentStatus || 'AWAITING_PROCESSING'
   }
 
-  if (order.shiprocketOrderId !== undefined) {
-    sanitizedOrder.shiprocket_order_id = order.shiprocketOrderId
+  if (order.nimbuspostOrderId !== undefined) {
+    sanitizedOrder.nimbuspost_order_id = order.nimbuspostOrderId
   }
-  if (order.shiprocketShipmentId !== undefined) {
-    sanitizedOrder.shiprocket_shipment_id = order.shiprocketShipmentId
+  if (order.nimbuspostShipmentId !== undefined) {
+    sanitizedOrder.nimbuspost_shipment_id = order.nimbuspostShipmentId
   }
   if (order.fulfillmentStatus !== undefined) {
     sanitizedOrder.fulfillment_status = order.fulfillmentStatus || 'AWAITING_PROCESSING'
   }
 
   console.log('💾 Saving order to Firebase:', sanitizedOrder.order_id)
-  const ref = await addDoc(collection(db, 'orders'), sanitizedOrder)
-  const snap = await getDoc(ref)
-  console.log('✅ Order saved to Firebase successfully')
-  return docWithId(snap)
+  try {
+    const ref = await addDoc(collection(db, 'orders'), sanitizedOrder)
+    const snap = await getDoc(ref)
+    console.log('✅ Order saved to Firebase successfully')
+    return docWithId(snap)
+  } catch (error) {
+    const code = error?.code || ''
+    if (code === 'permission-denied') {
+      throw new Error('Could not save order: Firestore permission denied. Deploy the latest firestore.rules.')
+    }
+    if (code === 'invalid-argument' || error?.message?.includes('size')) {
+      throw new Error('Could not save order: order data too large. Please try again or contact support.')
+    }
+    throw error
+  }
 }
 
 export async function updateOrderByOrderId(orderId, updates) {

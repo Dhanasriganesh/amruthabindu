@@ -1,9 +1,64 @@
 import React, { useState, useEffect } from 'react'
-import { Package, Search, Filter, Download, Eye, X, Calendar, DollarSign, User, MapPin, ShoppingBag, CheckCircle, XCircle, Clock, AlertCircle, Box, Truck } from 'lucide-react'
+import { Package, Search, Download, Eye, X, Calendar, DollarSign, User, MapPin, ShoppingBag, CheckCircle, XCircle, Clock, AlertCircle, Box, Truck, ExternalLink } from 'lucide-react'
 import { getAllOrders } from '../../services/firebase-db'
 import { updateOrderStatus, checkTrackingStatus } from '../../services/order-tracking'
-import { isSuccessfulOrder, orderDocToShiprocketPayload } from '../../services/order-completion'
-import { pushOrderToShiprocket } from '../../services/shiprocket-integration'
+import { isSuccessfulOrder, orderDocToNimbuspostPayload } from '../../services/order-completion'
+import {
+  pushOrderToNimbuspost,
+  fetchCouriersForOrder,
+  shipOrderWithNimbuspost,
+} from '../../services/nimbuspost-integration'
+
+const NIMBUSPOST_PANEL_URL = 'https://ship.nimbuspost.com/'
+const FULFILLMENT_STATUSES = [
+  'AWAITING_PROCESSING',
+  'PACKED',
+  'SHIPPED',
+  'OUT_FOR_DELIVERY',
+  'DELIVERED',
+  'CANCELLED',
+]
+
+function isSyncedToCourier(order) {
+  return Boolean(order.nimbuspost_order_id || order.shiprocket_order_id)
+}
+
+function isBookedOnNimbuspost(order) {
+  return Boolean(
+    order.tracking_number ||
+      order.nimbuspost_sync_status === 'booked' ||
+      order.fulfillment_status === 'SHIPPED' ||
+      order.fulfillment_status === 'OUT_FOR_DELIVERY' ||
+      order.fulfillment_status === 'DELIVERED'
+  )
+}
+
+function needsNimbuspostShip(order) {
+  return Boolean(order.nimbuspost_order_id) && !isBookedOnNimbuspost(order)
+}
+
+function needsNimbuspostSync(order) {
+  return isSuccessfulOrder(order) && !order.nimbuspost_order_id
+}
+
+function getSyncStatusBadge(order) {
+  if (!isSuccessfulOrder(order)) {
+    return { label: 'N/A', color: 'bg-gray-100 text-gray-600' }
+  }
+  if (order.nimbuspost_order_id && isBookedOnNimbuspost(order)) {
+    return { label: 'Booked', color: 'bg-green-100 text-green-800' }
+  }
+  if (order.nimbuspost_order_id) {
+    return { label: 'Awaiting Ship', color: 'bg-blue-100 text-blue-800' }
+  }
+  if (order.nimbuspost_sync_status === 'failed') {
+    return { label: 'Sync Failed', color: 'bg-red-100 text-red-800' }
+  }
+  if (order.shiprocket_order_id) {
+    return { label: 'Legacy SR', color: 'bg-amber-100 text-amber-800' }
+  }
+  return { label: 'Not synced', color: 'bg-orange-100 text-orange-800' }
+}
 
 function OrdersManager() {
   const [orders, setOrders] = useState([])
@@ -13,7 +68,11 @@ function OrdersManager() {
   const [showDetails, setShowDetails] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(null)
   const [syncingTracking, setSyncingTracking] = useState(false)
-  const [pushingToShiprocket, setPushingToShiprocket] = useState(null)
+  const [pushingToNimbuspost, setPushingToNimbuspost] = useState(null)
+  const [shippingWithNimbuspost, setShippingWithNimbuspost] = useState(null)
+  const [courierOptions, setCourierOptions] = useState([])
+  const [loadingCouriers, setLoadingCouriers] = useState(false)
+  const [selectedCourierId, setSelectedCourierId] = useState('')
 
   useEffect(() => {
     fetchOrders()
@@ -78,48 +137,150 @@ function OrdersManager() {
     }
   }
 
-  const handlePushToShiprocket = async (order) => {
+  const handlePushToNimbuspost = async (order) => {
     if (!isSuccessfulOrder(order)) {
-      alert('Only successful orders can be pushed to Shiprocket.')
+      alert('Only successful orders can be synced to Nimbuspost.')
       return
     }
-    if (order.shiprocket_order_id) {
-      alert('This order is already synced to Shiprocket.')
+    if (order.nimbuspost_order_id) {
+      alert('This order is already synced to Nimbuspost.')
       return
     }
 
     try {
-      setPushingToShiprocket(order.order_id)
-      const payload = orderDocToShiprocketPayload(order)
-      const result = await pushOrderToShiprocket(payload)
+      setPushingToNimbuspost(order.order_id)
+      const payload = orderDocToNimbuspostPayload(order)
+      const result = await pushOrderToNimbuspost(payload, { mode: 'create' })
 
       if (result.skipped) {
-        alert('Shiprocket is not configured. Add SHIPROCKET_API_EMAIL and SHIPROCKET_API_PASSWORD to .env and restart the server.')
+        alert('Nimbuspost is not configured. Add NIMBUSPOST_API_EMAIL and NIMBUSPOST_API_PASSWORD to .env and restart the server.')
         return
       }
       if (!result.success) {
-        alert(`Failed to push to Shiprocket:\n${result.error || 'Unknown error'}`)
+        alert(`Failed to sync to Nimbuspost:\n${result.error || 'Unknown error'}`)
         return
       }
 
       const { updateOrderByOrderId } = await import('../../services/firebase-db')
       const updates = {
-        shiprocket_order_id: result.shiprocketOrderId.toString(),
-        fulfillment_status: 'AWAITING_PROCESSING',
+        nimbuspost_order_id: result.nimbuspostOrderId.toString(),
+        nimbuspost_sync_status: result.booked ? 'booked' : 'synced',
+        nimbuspost_sync_error: null,
+        fulfillment_status: result.booked ? 'SHIPPED' : 'AWAITING_PROCESSING',
       }
       if (result.shipmentId) {
-        updates.shiprocket_shipment_id = result.shipmentId.toString()
+        updates.nimbuspost_shipment_id = result.shipmentId.toString()
+      }
+      if (result.booked && result.awbNumber) {
+        updates.tracking_number = result.awbNumber.toString()
       }
       await updateOrderByOrderId(order.order_id, updates)
-      alert(`Order synced to Shiprocket!\nShiprocket Order ID: ${result.shiprocketOrderId}`)
+      alert(
+        result.booked
+          ? `Order synced and booked in Nimbuspost.\nAWB: ${result.awbNumber || 'pending'}`
+          : `Order synced to Nimbuspost Orders.\nSelect a courier and click Ship when ready.`
+      )
       await fetchOrders()
     } catch (error) {
-      console.error('Failed to push to Shiprocket:', error)
-      alert(`Failed to push to Shiprocket: ${error.message}`)
+      console.error('Failed to sync to Nimbuspost:', error)
+      alert(`Failed to sync to Nimbuspost: ${error.message}`)
     } finally {
-      setPushingToShiprocket(null)
+      setPushingToNimbuspost(null)
     }
   }
+
+  const loadCouriersForOrder = async (order) => {
+    try {
+      setLoadingCouriers(true)
+      setCourierOptions([])
+      setSelectedCourierId('')
+      const payload = orderDocToNimbuspostPayload(order)
+      const result = await fetchCouriersForOrder(payload)
+      if (!result.success) {
+        alert(result.error || 'Could not load courier options for this order')
+        return
+      }
+      const couriers = result.couriers || []
+      setCourierOptions(couriers)
+      const preferred =
+        order.delivery_info?.courierId ||
+        order.delivery_info?.courier_id ||
+        result.recommendedCourierId ||
+        couriers[0]?.id
+      if (preferred) setSelectedCourierId(String(preferred))
+    } catch (error) {
+      console.error('Failed to load couriers:', error)
+      alert(`Failed to load couriers: ${error.message}`)
+    } finally {
+      setLoadingCouriers(false)
+    }
+  }
+
+  const handleShipWithNimbuspost = async (order) => {
+    if (!order.nimbuspost_order_id) {
+      alert('Sync this order to Nimbuspost first.')
+      return
+    }
+    if (!selectedCourierId) {
+      alert('Select a courier partner before shipping.')
+      return
+    }
+
+    const courier = courierOptions.find((c) => String(c.id) === String(selectedCourierId))
+    const confirmed = window.confirm(
+      `Book shipment with ${courier?.name || 'selected courier'}?\n\nThis will generate AWB in Nimbuspost.`
+    )
+    if (!confirmed) return
+
+    try {
+      setShippingWithNimbuspost(order.order_id)
+      const payload = {
+        ...orderDocToNimbuspostPayload(order),
+        nimbuspost_order_id: order.nimbuspost_order_id,
+        nimbuspostOrderId: order.nimbuspost_order_id,
+      }
+      const result = await shipOrderWithNimbuspost(payload, selectedCourierId)
+
+      if (!result.success) {
+        alert(`Failed to ship with Nimbuspost:\n${result.error || 'Unknown error'}`)
+        return
+      }
+
+      const { updateOrderByOrderId } = await import('../../services/firebase-db')
+      const updates = {
+        nimbuspost_sync_status: 'booked',
+        nimbuspost_sync_error: null,
+        fulfillment_status: 'SHIPPED',
+      }
+      if (result.shipmentId) updates.nimbuspost_shipment_id = result.shipmentId.toString()
+      if (result.awbNumber) updates.tracking_number = result.awbNumber.toString()
+      if (courier?.name) updates.nimbuspost_courier_name = courier.name
+      await updateOrderByOrderId(order.order_id, updates)
+
+      alert(`Shipment booked!\nAWB: ${result.awbNumber || 'Check Nimbuspost panel'}`)
+      await fetchOrders()
+    } catch (error) {
+      console.error('Failed to ship with Nimbuspost:', error)
+      alert(`Failed to ship: ${error.message}`)
+    } finally {
+      setShippingWithNimbuspost(null)
+    }
+  }
+
+  useEffect(() => {
+    if (!selectedOrder || !showDetails) return
+    if (needsNimbuspostShip(selectedOrder)) {
+      loadCouriersForOrder(selectedOrder)
+    } else {
+      setCourierOptions([])
+      setSelectedCourierId('')
+    }
+  }, [
+    selectedOrder?.order_id,
+    selectedOrder?.nimbuspost_order_id,
+    selectedOrder?.tracking_number,
+    showDetails,
+  ])
 
   const getFulfillmentStatusBadge = (order) => {
     const status = order.fulfillment_status || 'AWAITING_PROCESSING'
@@ -166,7 +327,7 @@ function OrdersManager() {
       setSyncingTracking(true)
       const result = await checkTrackingStatus()
       if (result.skipped) {
-        alert('ℹ️ Shiprocket is not configured yet.\n\nTracking sync will work once you add SHIPROCKET_API_EMAIL and SHIPROCKET_API_PASSWORD to your .env file.')
+        alert('ℹ️ Nimbuspost is not configured yet.\n\nTracking sync will work once you add NIMBUSPOST_API_EMAIL and NIMBUSPOST_API_PASSWORD to your .env file.')
         return
       }
       alert(`✅ Tracking sync complete\n\nChecked: ${result.checked} orders\nUpdated: ${result.updated}\nEmails sent: ${result.emailsSent}`)
@@ -201,7 +362,7 @@ function OrdersManager() {
       
       console.log('🔄 Updating order status:', {
         orderId: order.order_id,
-        shiprocketOrderId: order.shiprocket_order_id,
+        nimbuspostOrderId: order.nimbuspost_order_id,
         newStatus,
         trackingNumber
       })
@@ -244,7 +405,19 @@ function OrdersManager() {
   })
 
   const exportToCSV = () => {
-    const headers = ['Order ID', 'Date', 'Customer', 'Email', 'Phone', 'Total', 'Status', 'Payment Method']
+    const headers = [
+      'Order ID',
+      'Date',
+      'Customer',
+      'Email',
+      'Phone',
+      'Total',
+      'Delivery',
+      'Payment',
+      'Fulfillment',
+      'Nimbuspost ID',
+      'Tracking',
+    ]
     const rows = filteredOrders.map(order => [
       order.order_id,
       new Date(order.created_at).toLocaleDateString(),
@@ -252,8 +425,11 @@ function OrdersManager() {
       order.shipping_address?.email || '',
       order.shipping_address?.phone || '',
       `₹${order.totals?.total || 0}`,
+      order.totals?.delivery === 0 ? 'FREE' : `₹${order.totals?.delivery || 0}`,
+      getPaymentStatusBadge(order).label,
       getFulfillmentStatusBadge(order).label,
-      order.payment_method || 'N/A'
+      order.nimbuspost_order_id || order.shiprocket_order_id || '',
+      order.tracking_number || '',
     ])
 
     const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n')
@@ -288,8 +464,8 @@ function OrdersManager() {
 
           <div className="p-6 space-y-6">
             {/* Status & Date */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPaymentStatusBadge(order).color}`}>
                   {getPaymentStatusBadge(order).icon}
                   {getPaymentStatusBadge(order).label}
@@ -299,9 +475,27 @@ function OrdersManager() {
                   {getFulfillmentStatusBadge(order).label}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <Calendar size={16} />
-                <span className="text-sm">{new Date(order.created_at).toLocaleString()}</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <label htmlFor={`fulfillment-${order.order_id}`} className="text-sm text-gray-600">
+                  Update status
+                </label>
+                <select
+                  id={`fulfillment-${order.order_id}`}
+                  value={order.fulfillment_status || 'AWAITING_PROCESSING'}
+                  disabled={updatingStatus === order.order_id}
+                  onChange={(e) => handleStatusUpdate(order, e.target.value)}
+                  className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-emerald-500"
+                >
+                  {FULFILLMENT_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {getFulfillmentStatusBadge({ fulfillment_status: status }).label}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Calendar size={16} />
+                  <span className="text-sm">{new Date(order.created_at).toLocaleString()}</span>
+                </div>
               </div>
             </div>
 
@@ -423,70 +617,173 @@ function OrdersManager() {
               </div>
             </div>
 
-            {/* Shiprocket / Tracking */}
+            {/* Nimbuspost / Tracking */}
             <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Truck size={18} />
-                Shiprocket Delivery
-              </h4>
-              {order.shiprocket_order_id || order.tracking_number ? (
-                <div className="text-sm space-y-2">
-                  {order.shiprocket_order_id && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Shiprocket Order ID</span>
-                      <span className="font-medium text-gray-900 font-mono text-xs">{order.shiprocket_order_id}</span>
-                    </div>
-                  )}
-                  {order.shiprocket_shipment_id && (
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <Truck size={18} />
+                  Nimbuspost Delivery
+                </h4>
+                <a
+                  href={NIMBUSPOST_PANEL_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-emerald-600 hover:text-emerald-700 inline-flex items-center gap-1"
+                >
+                  Open Nimbuspost Panel
+                  <ExternalLink size={12} />
+                </a>
+              </div>
+              {order.nimbuspost_sync_error && (
+                <p className="text-sm text-red-700 mb-3">{order.nimbuspost_sync_error}</p>
+              )}
+
+              {order.nimbuspost_order_id ? (
+                <div className="text-sm space-y-2 mb-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Nimbuspost Order ID</span>
+                    <span className="font-medium text-gray-900 font-mono text-xs">{order.nimbuspost_order_id}</span>
+                  </div>
+                  {order.nimbuspost_shipment_id && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Shipment ID</span>
-                      <span className="font-medium text-gray-900 font-mono text-xs">{order.shiprocket_shipment_id}</span>
+                      <span className="font-medium text-gray-900 font-mono text-xs">{order.nimbuspost_shipment_id}</span>
+                    </div>
+                  )}
+                  {order.nimbuspost_courier_name && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Courier</span>
+                      <span className="font-medium text-gray-900">{order.nimbuspost_courier_name}</span>
                     </div>
                   )}
                   {order.tracking_number && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">AWB / Tracking</span>
                       <a
-                        href={`https://shiprocket.co/tracking/${encodeURIComponent(order.tracking_number)}`}
+                        href={`https://nimbuspost.com/tracking/?awb=${encodeURIComponent(order.tracking_number)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-medium text-emerald-600 hover:text-emerald-700 text-xs"
+                        className="font-medium text-emerald-600 hover:text-emerald-700 text-xs inline-flex items-center gap-1"
                       >
                         {order.tracking_number}
+                        <ExternalLink size={12} />
                       </a>
                     </div>
                   )}
                 </div>
-              ) : isSuccessfulOrder(order) ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-amber-700">Not synced to Shiprocket yet.</p>
+              ) : order.shiprocket_order_id ? (
+                <div className="text-sm mb-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Legacy Shiprocket ID</span>
+                    <span className="font-medium text-gray-900 font-mono text-xs">{order.shiprocket_order_id}</span>
+                  </div>
+                </div>
+              ) : null}
+
+              {needsNimbuspostShip(order) && (
+                <div className="space-y-3 border-t border-gray-200 pt-4">
+                  <p className="text-sm text-blue-800">
+                    Order is in Nimbuspost. Select a courier and ship when ready — AWB will be generated only after you click Ship.
+                  </p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Courier partner</label>
+                    <select
+                      value={selectedCourierId}
+                      onChange={(e) => setSelectedCourierId(e.target.value)}
+                      disabled={loadingCouriers || shippingWithNimbuspost === order.order_id}
+                      className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500"
+                    >
+                      {loadingCouriers ? (
+                        <option value="">Loading couriers…</option>
+                      ) : courierOptions.length === 0 ? (
+                        <option value="">No couriers available</option>
+                      ) : (
+                        courierOptions.map((courier) => (
+                          <option key={courier.id} value={courier.id}>
+                            {courier.name} — ₹{courier.price}
+                            {courier.estimatedDelivery ? ` (${courier.estimatedDelivery})` : ''}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => handlePushToShiprocket(order)}
-                    disabled={pushingToShiprocket === order.order_id}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    onClick={() => handleShipWithNimbuspost(order)}
+                    disabled={
+                      shippingWithNimbuspost === order.order_id ||
+                      loadingCouriers ||
+                      !selectedCourierId
+                    }
+                    className="px-4 py-2 bg-emerald-700 text-white text-sm rounded-lg hover:bg-emerald-800 disabled:opacity-50"
                   >
-                    {pushingToShiprocket === order.order_id ? 'Pushing…' : 'Push to Shiprocket'}
+                    {shippingWithNimbuspost === order.order_id ? 'Booking shipment…' : 'Ship with Nimbuspost'}
                   </button>
                 </div>
-              ) : (
-                <p className="text-sm text-gray-500">Available after successful payment.</p>
               )}
+
+              {needsNimbuspostSync(order) ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-amber-700">
+                    Not synced to Nimbuspost yet. Orders should auto-sync on checkout; use this to retry.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handlePushToNimbuspost(order)}
+                    disabled={pushingToNimbuspost === order.order_id}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {pushingToNimbuspost === order.order_id ? 'Syncing…' : 'Sync to Nimbuspost'}
+                  </button>
+                </div>
+              ) : !isSuccessfulOrder(order) ? (
+                <p className="text-sm text-gray-500">Available after successful payment.</p>
+              ) : isBookedOnNimbuspost(order) ? (
+                <p className="text-sm text-green-700">Shipment booked in Nimbuspost.</p>
+              ) : null}
             </div>
 
-            {/* Delivery Info */}
+            {/* Delivery quote at checkout */}
             {order.delivery_info && (
               <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-900 mb-3">Delivery Information</h4>
+                <h4 className="font-semibold text-gray-900 mb-3">Checkout Delivery Quote</h4>
                 <div className="text-sm space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Method</span>
-                    <span className="font-medium text-gray-900">{order.delivery_info.deliveryMethod || 'Standard'}</span>
+                    <span className="text-gray-600">Delivery charge</span>
+                    <span className="font-medium text-gray-900">
+                      {order.delivery_info.deliveryPrice === 0 ? 'FREE' : `₹${order.delivery_info.deliveryPrice}`}
+                    </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Estimated Days</span>
-                    <span className="font-medium text-gray-900">{order.delivery_info.estimatedDays || 'N/A'}</span>
-                  </div>
+                  {order.delivery_info.courierName && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Courier</span>
+                      <span className="font-medium text-gray-900">{order.delivery_info.courierName}</span>
+                    </div>
+                  )}
+                  {order.delivery_info.estimatedDelivery && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Estimated delivery</span>
+                      <span className="font-medium text-gray-900">{order.delivery_info.estimatedDelivery}</span>
+                    </div>
+                  )}
+                  {order.delivery_info.weightKg && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Package weight</span>
+                      <span className="font-medium text-gray-900">{order.delivery_info.weightKg} kg</span>
+                    </div>
+                  )}
+                  {order.delivery_info.shippingSource && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Rate source</span>
+                      <span className="font-medium text-gray-900 capitalize">{order.delivery_info.shippingSource}</span>
+                    </div>
+                  )}
+                  {order.delivery_info.deliveryInstructions && (
+                    <div>
+                      <span className="text-gray-600 block mb-1">Instructions</span>
+                      <span className="font-medium text-gray-900">{order.delivery_info.deliveryInstructions}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -499,7 +796,7 @@ function OrdersManager() {
   return (
     <div className="space-y-4">
       {/* Header Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div className="bg-white rounded-lg shadow-sm p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -537,12 +834,36 @@ function OrdersManager() {
         <div className="bg-white rounded-lg shadow-sm p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-600 mb-1">Pending</p>
+              <p className="text-xs text-gray-600 mb-1">Pending Payment</p>
               <h3 className="text-2xl font-bold text-yellow-600">
                 {orders.filter(o => !isSuccessfulOrder(o)).length}
               </h3>
             </div>
             <Clock className="text-yellow-600" size={24} />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-600 mb-1">Nimbuspost Synced</p>
+              <h3 className="text-2xl font-bold text-green-600">
+                {orders.filter(o => o.nimbuspost_order_id).length}
+              </h3>
+            </div>
+            <Truck className="text-green-600" size={24} />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-600 mb-1">Needs Nimbuspost Sync</p>
+              <h3 className="text-2xl font-bold text-orange-600">
+                {orders.filter(o => needsNimbuspostSync(o)).length}
+              </h3>
+            </div>
+            <AlertCircle className="text-orange-600" size={24} />
           </div>
         </div>
       </div>
@@ -563,7 +884,16 @@ function OrdersManager() {
             </div>
           </div>
 
-          <div className="flex gap-2 w-full md:w-auto">
+          <div className="flex gap-2 w-full md:w-auto flex-wrap">
+            <a
+              href={NIMBUSPOST_PANEL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <ExternalLink size={18} />
+              Nimbuspost Panel
+            </a>
             <button
               onClick={handleSyncTracking}
               disabled={syncingTracking}
@@ -600,14 +930,18 @@ function OrdersManager() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Order ID</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Customer</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Items</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Total</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Payment</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Fulfillment</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Nimbuspost</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Tracking</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredOrders.map((order) => (
+                {filteredOrders.map((order) => {
+                  const syncBadge = getSyncStatusBadge(order)
+                  return (
                   <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
                       <span className="font-mono text-sm text-gray-900">{order.order_id}</span>
@@ -623,17 +957,43 @@ function OrdersManager() {
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {new Date(order.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {order.items?.length || 0} items
-                    </td>
                     <td className="px-4 py-3">
                       <span className="font-semibold text-gray-900">₹{order.totals?.total || 0}</span>
+                      {order.totals?.delivery > 0 && (
+                        <p className="text-xs text-gray-500">+₹{order.totals.delivery} delivery</p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusBadge(order).color}`}>
                         {getPaymentStatusBadge(order).icon}
                         {getPaymentStatusBadge(order).label}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getFulfillmentStatusBadge(order).color}`}>
+                        {getFulfillmentStatusBadge(order).icon}
+                        {getFulfillmentStatusBadge(order).label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${syncBadge.color}`}>
+                        {syncBadge.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {order.tracking_number ? (
+                        <a
+                          href={`https://nimbuspost.com/tracking/?awb=${encodeURIComponent(order.tracking_number)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-600 hover:text-emerald-700 font-mono text-xs inline-flex items-center gap-1"
+                        >
+                          {order.tracking_number}
+                          <ExternalLink size={12} />
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <button
@@ -648,7 +1008,7 @@ function OrdersManager() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>

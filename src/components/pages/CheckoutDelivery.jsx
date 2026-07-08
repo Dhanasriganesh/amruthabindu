@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Truck, CheckCircle, Loader2, AlertCircle } from 'lucide-react'
 import { useCart } from '../../contexts/CartContext'
-import { fetchShippingRate, formatDeliveryPrice, saveDeliveryInfo } from '../../services/shipping-rate'
+import { fetchShippingRate, formatDeliveryPrice, saveDeliveryInfo, computeOrderTotal, formatRupee } from '../../services/shipping-rate'
 
 function CheckoutDelivery() {
   const navigate = useNavigate()
@@ -38,11 +38,11 @@ function CheckoutDelivery() {
         setDeliveryQuote(result)
       } else {
         setRateError(result.error || 'Could not calculate delivery charge')
-        setDeliveryQuote({ deliveryPrice: 0, success: true })
+        setDeliveryQuote(null)
       }
     } catch (error) {
       setRateError(error.message || 'Could not calculate delivery charge')
-      setDeliveryQuote({ deliveryPrice: 0, success: true })
+      setDeliveryQuote(null)
     } finally {
       setLoadingRate(false)
     }
@@ -53,7 +53,10 @@ function CheckoutDelivery() {
   }, [loadShippingRate])
 
   const deliveryPrice = deliveryQuote?.deliveryPrice ?? 0
-  const finalTotal = getCartTotal() + deliveryPrice
+  const { cgst, sgst, total: finalTotal } = computeOrderTotal({
+    subtotal: getCartTotal(),
+    deliveryPrice,
+  })
 
   const deliveryDescription = loadingRate
     ? 'Calculating delivery charge for your pincode…'
@@ -68,7 +71,7 @@ function CheckoutDelivery() {
             : 'Standard delivery to your address'
 
   const handleContinue = () => {
-    if (loadingRate) return
+    if (loadingRate || rateError || !deliveryQuote?.success) return
 
     saveDeliveryInfo(
       { selectedDelivery: 'standard', deliveryInstructions },
@@ -214,16 +217,15 @@ function CheckoutDelivery() {
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h3 className="font-semibold text-blue-900 mb-2">Delivery Information</h3>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Delivery charge uses Shiprocket&apos;s recommended courier for your pincode</li>
+                  <li>• Delivery charge uses Nimbuspost&apos;s recommended courier for your pincode</li>
                   <li>• Orders are processed within 24 hours</li>
                   <li>• You will receive SMS updates about your order</li>
-                  <li>• COD orders show an updated delivery fee on the payment step</li>
                 </ul>
               </div>
 
               <button
                 onClick={handleContinue}
-                disabled={loadingRate}
+                disabled={loadingRate || Boolean(rateError) || !deliveryQuote}
                 className="w-full mt-6 bg-green-800 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loadingRate ? 'Calculating delivery…' : 'Continue to Payment'}
@@ -281,10 +283,27 @@ function CheckoutDelivery() {
                     </span>
                   </div>
 
+                  {deliveryPrice > 0 && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">CGST (9%):</span>
+                        <span className="font-medium">
+                          {loadingRate ? '…' : formatRupee(cgst)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">SGST (9%):</span>
+                        <span className="font-medium">
+                          {loadingRate ? '…' : formatRupee(sgst)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
                   <div className="border-t border-gray-200 pt-4">
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total:</span>
-                      <span>{loadingRate ? '…' : `₹${finalTotal}`}</span>
+                      <span>{loadingRate ? '…' : formatRupee(finalTotal)}</span>
                     </div>
                   </div>
                 </div>
