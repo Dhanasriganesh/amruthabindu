@@ -1,5 +1,6 @@
 import { loadProductsFromSupabase } from './cms'
 import { normalizeCategorySlug } from '../constants/categories'
+import { mergeCatalogProducts } from './catalog-products'
 
 /**
  * Load products from Firestore (cms/products). Returns [] when database is empty.
@@ -8,8 +9,9 @@ import { normalizeCategorySlug } from '../constants/categories'
 export async function loadProductsFromDatabase() {
   try {
     const remoteProducts = await loadProductsFromSupabase()
-    if (remoteProducts && remoteProducts.length > 0) {
-      return remoteProducts
+    const products = mergeCatalogProducts(remoteProducts || [])
+    if (products.length > 0) {
+      return products
     }
     localStorage.removeItem('products_data')
     localStorage.removeItem('admin_products')

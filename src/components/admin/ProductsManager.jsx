@@ -12,6 +12,7 @@ import {
   getCategoryLabel,
   productsNeedCategoryMigration,
 } from '../../constants/categories'
+import { mergeCatalogProducts, catalogProductsMissing } from '../../services/catalog-products'
 
 function ProductsManager() {
   const [products, setProducts] = useState([])
@@ -31,6 +32,18 @@ function ProductsManager() {
           supabaseProducts = await loadProductsFromSupabase()
         }
       }
+
+      const missingCatalog = catalogProductsMissing(supabaseProducts || [])
+      if (missingCatalog.length > 0) {
+        supabaseProducts = mergeCatalogProducts(supabaseProducts || [])
+        const saveResult = await saveProductsToSupabase(supabaseProducts)
+        if (saveResult.success) {
+          setMigrationStatus(
+            `Added ${missingCatalog.length} Naturals product(s) from catalog: ${missingCatalog.map((p) => p.name).join(', ')}`
+          )
+        }
+      }
+
       if (supabaseProducts && supabaseProducts.length > 0) {
         const normalized = supabaseProducts.map((p, idx) => ({
           id: p.id ?? (Date.now() + idx),

@@ -405,7 +405,7 @@ function ProductDetail() {
             <div className="grid md:grid-cols-2 gap-6 mt-6">
               <div>
                 <h3 className="font-bold text-gray-900 mb-2">Benefits</h3>
-                <p className="text-gray-700">{product.benefits}</p>
+                <p className="text-gray-700 whitespace-pre-line">{product.benefits}</p>
               </div>
               <div>
                 <h3 className="font-bold text-gray-900 mb-2">Key Ingredients</h3>
