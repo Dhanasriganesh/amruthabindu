@@ -5,12 +5,14 @@ import {
   saveProductsToSupabase,
   loadProductsFromSupabase,
   migrateProductCategoriesInFirestore,
+  migrateOilsCategoryInFirestore,
 } from '../../services/cms'
 import {
   PRODUCT_CATEGORY_OPTIONS,
   CATEGORY_SLUGS,
   getCategoryLabel,
   productsNeedCategoryMigration,
+  productsNeedOilsCategoryMigration,
 } from '../../constants/categories'
 import { mergeCatalogProducts, catalogProductsMissing } from '../../services/catalog-products'
 
@@ -33,13 +35,21 @@ function ProductsManager() {
         }
       }
 
+      if (supabaseProducts?.length && productsNeedOilsCategoryMigration(supabaseProducts)) {
+        const oilsResult = await migrateOilsCategoryInFirestore()
+        if (oilsResult.success) {
+          setMigrationStatus(oilsResult.message || 'Oil products moved to Oils category')
+          supabaseProducts = await loadProductsFromSupabase()
+        }
+      }
+
       const missingCatalog = catalogProductsMissing(supabaseProducts || [])
       if (missingCatalog.length > 0) {
         supabaseProducts = mergeCatalogProducts(supabaseProducts || [])
         const saveResult = await saveProductsToSupabase(supabaseProducts)
         if (saveResult.success) {
           setMigrationStatus(
-            `Added ${missingCatalog.length} Naturals product(s) from catalog: ${missingCatalog.map((p) => p.name).join(', ')}`
+            `Added ${missingCatalog.length} catalog product(s): ${missingCatalog.map((p) => p.name).join(', ')}`
           )
         }
       }

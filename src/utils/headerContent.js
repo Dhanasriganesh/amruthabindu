@@ -14,10 +14,12 @@ export const DEFAULT_HEADER = {
         { name: 'All Products', href: '/shop', icon: '🌿' },
         { name: 'Foods', href: '/shop/foods', icon: '🥣' },
         { name: 'Naturals', href: '/shop/naturals', icon: '🌱' },
+        { name: 'Oils', href: '/shop/oils', icon: '🫙' },
       ],
     },
     { name: 'Foods', href: '/shop/foods' },
     { name: 'Naturals', href: '/shop/naturals' },
+    { name: 'Oils', href: '/shop/oils' },
     { name: 'About Us', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ],
@@ -31,15 +33,31 @@ export function mapCmsNavigation(cmsNav) {
 
   return cmsNav.map((item) => {
     const submenu = Array.isArray(item.submenu) ? item.submenu : []
+    let nextSubmenu = submenu.map((sub) => ({
+      name: sub.name || 'Link',
+      href: sub.href || '/',
+      icon: sub.icon || '•',
+    }))
+
+    // Ensure Oils appears under Shop for older CMS header documents
+    const href = (item.href || '').toLowerCase()
+    const isShop = item.name?.toLowerCase() === 'shop' || href === '/shop' || href.startsWith('/shop')
+    if (isShop && nextSubmenu.length > 0) {
+      const hasOils = nextSubmenu.some(
+        (sub) =>
+          (sub.href || '').includes('/shop/oils') ||
+          (sub.name || '').toLowerCase() === 'oils'
+      )
+      if (!hasOils) {
+        nextSubmenu = [...nextSubmenu, { name: 'Oils', href: '/shop/oils', icon: '🫙' }]
+      }
+    }
+
     return {
       name: item.name || 'Menu',
       href: item.href || '/',
-      hasDropdown: submenu.length > 0,
-      submenu: submenu.map((sub) => ({
-        name: sub.name || 'Link',
-        href: sub.href || '/',
-        icon: sub.icon || '•',
-      })),
+      hasDropdown: nextSubmenu.length > 0,
+      submenu: nextSubmenu,
     }
   })
 }
@@ -49,11 +67,34 @@ export function mergeHeaderContent(cms) {
     return { ...DEFAULT_HEADER }
   }
 
+  let navigation = mapCmsNavigation(cms.navigation)
+  const hasTopLevelOils = navigation.some(
+    (item) =>
+      (item.href || '').includes('/shop/oils') || (item.name || '').toLowerCase() === 'oils'
+  )
+  if (!hasTopLevelOils) {
+    const naturalsIndex = navigation.findIndex(
+      (item) =>
+        (item.href || '').includes('/shop/naturals') ||
+        (item.name || '').toLowerCase() === 'naturals'
+    )
+    const oilsItem = { name: 'Oils', href: '/shop/oils' }
+    if (naturalsIndex >= 0) {
+      navigation = [
+        ...navigation.slice(0, naturalsIndex + 1),
+        oilsItem,
+        ...navigation.slice(naturalsIndex + 1),
+      ]
+    } else {
+      navigation = [...navigation, oilsItem]
+    }
+  }
+
   return {
     logo: cms.logo || DEFAULT_HEADER.logo,
     siteName: cms.siteName || DEFAULT_HEADER.siteName,
     tagline: cms.tagline || DEFAULT_HEADER.tagline,
-    navigation: mapCmsNavigation(cms.navigation),
+    navigation,
   }
 }
 

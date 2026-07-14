@@ -21,7 +21,7 @@ export function CategoriesSection({ categories = DEFAULT_HOME_CONTENT.categories
           subtitle="Curated paths into natural wellness"
         />
 
-        <motion.div style={{ scale }} className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 home-perspective max-w-4xl mx-auto">
+        <motion.div style={{ scale }} className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 home-perspective max-w-6xl mx-auto">
           {CATEGORIES.map((cat, idx) => (
             <ScrollReveal key={cat.name} delay={idx * 0.12} className={cat.span}>
               <Link to={cat.href} className="group block h-full">

@@ -1,5 +1,8 @@
-import { loadProductsFromSupabase } from './cms'
-import { normalizeCategorySlug } from '../constants/categories'
+import { loadProductsFromSupabase, migrateOilsCategoryInFirestore } from './cms'
+import {
+  normalizeCategorySlug,
+  productsNeedOilsCategoryMigration,
+} from '../constants/categories'
 import { mergeCatalogProducts } from './catalog-products'
 
 /**
@@ -11,6 +14,11 @@ export async function loadProductsFromDatabase() {
     const remoteProducts = await loadProductsFromSupabase()
     const products = mergeCatalogProducts(remoteProducts || [])
     if (products.length > 0) {
+      if (productsNeedOilsCategoryMigration(remoteProducts || [])) {
+        migrateOilsCategoryInFirestore().catch((err) => {
+          console.warn('⚠️ Could not persist Oils category migration:', err?.message || err)
+        })
+      }
       return products
     }
     localStorage.removeItem('products_data')
@@ -22,7 +30,7 @@ export async function loadProductsFromDatabase() {
     if (cached) {
       try {
         const parsed = JSON.parse(cached)
-        return Array.isArray(parsed) ? parsed : []
+        return Array.isArray(parsed) ? mergeCatalogProducts(parsed) : []
       } catch {
         return []
       }

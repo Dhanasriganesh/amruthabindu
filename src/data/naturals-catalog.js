@@ -11,6 +11,7 @@ function catalogProduct({
   id,
   catalogSlug,
   name,
+  category = 'naturals',
   description,
   fullDescription,
   benefits,
@@ -24,7 +25,7 @@ function catalogProduct({
     id,
     catalogSlug,
     name,
-    category: 'naturals',
+    category,
     type: 'regular',
     priority,
     description,
@@ -44,6 +45,7 @@ export const NATURALS_CATALOG_PRODUCTS = [
     id: 202607101,
     catalogSlug: CATALOG_PRODUCT_SLUGS.GROUNDNUT_OIL,
     name: 'Cold-Pressed Groundnut Oil (Wood Pressed)',
+    category: 'oils',
     description:
       'Premium wood-pressed groundnut oil extracted from carefully selected peanuts to preserve its natural flavor, aroma, and nutrients.',
     fullDescription:
@@ -63,6 +65,7 @@ export const NATURALS_CATALOG_PRODUCTS = [
     id: 202607102,
     catalogSlug: CATALOG_PRODUCT_SLUGS.WHITE_SESAME_OIL,
     name: 'Cold-Pressed White Sesame Oil (Wood Pressed)',
+    category: 'oils',
     description:
       'Premium wood-pressed white sesame oil extracted from carefully selected sesame seeds to preserve its natural aroma, nutrients, and authentic taste.',
     fullDescription:
@@ -82,6 +85,7 @@ export const NATURALS_CATALOG_PRODUCTS = [
     id: 202607103,
     catalogSlug: CATALOG_PRODUCT_SLUGS.COCONUT_OIL,
     name: 'Cold-Pressed Kuridi Coconut Cooking Oil (Wood Pressed)',
+    category: 'oils',
     description:
       'Premium wood-pressed coconut cooking oil extracted from carefully selected Kuridi coconuts to preserve its natural aroma, nutrients, and authentic flavor.',
     fullDescription:

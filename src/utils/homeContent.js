@@ -13,6 +13,9 @@ export const DEFAULT_HOME_CONTENT = {
   categories: {
     foodsImage: HOME_COLLECTION_CATEGORIES[0]?.image || '/face.jpg',
     naturalsImage: HOME_COLLECTION_CATEGORIES[1]?.image || '/hair.jpg',
+    oilsImage:
+      HOME_COLLECTION_CATEGORIES[2]?.image ||
+      '/products-images/cold-pressed-groundnuts-oil.png',
   },
   featuresHeading: {
     label: 'The Amrutha Standard',
@@ -145,6 +148,8 @@ export function mergeHomeContent(cms) {
         cms.categories?.naturalsImage ||
         cms.categories?.hairCareImage ||
         DEFAULT_HOME_CONTENT.categories.naturalsImage,
+      oilsImage:
+        cms.categories?.oilsImage || DEFAULT_HOME_CONTENT.categories.oilsImage,
     },
     featuresHeading: {
       label: cms.featuresHeading?.label || DEFAULT_HOME_CONTENT.featuresHeading.label,
@@ -189,7 +194,7 @@ export function readHomeContentCache() {
 }
 
 export function buildHomeCategories(content) {
-  const [foods, naturals] = HOME_COLLECTION_CATEGORIES
+  const [foods, naturals, oils] = HOME_COLLECTION_CATEGORIES
   return [
     {
       ...foods,
@@ -198,6 +203,10 @@ export function buildHomeCategories(content) {
     {
       ...naturals,
       image: content.categories.naturalsImage || naturals.image,
+    },
+    {
+      ...oils,
+      image: content.categories.oilsImage || oils.image,
     },
   ]
 }

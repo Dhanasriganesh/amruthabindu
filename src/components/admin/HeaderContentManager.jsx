@@ -22,6 +22,7 @@ function HeaderContentManager() {
           { name: 'All Products', href: '/shop' },
           { name: 'Foods', href: '/shop/foods' },
           { name: 'Naturals', href: '/shop/naturals' },
+          { name: 'Oils', href: '/shop/oils' },
         ]
       },
       { name: 'Contact Us', href: '/contact' }

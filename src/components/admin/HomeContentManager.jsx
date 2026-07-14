@@ -233,6 +233,17 @@ function HomeContentManager() {
               })
             }
           />
+          <ImageField
+            label="Oils Category Image"
+            value={homeContent.categories?.oilsImage}
+            placeholder="/products-images/cold-pressed-groundnuts-oil.png"
+            onChange={(value) =>
+              setHomeContent({
+                ...homeContent,
+                categories: { ...homeContent.categories, oilsImage: value },
+              })
+            }
+          />
         </div>
       </div>
 

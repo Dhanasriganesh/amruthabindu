@@ -195,6 +195,12 @@ function Footer() {
                   Naturals
                 </Link>
               </li>
+              <li>
+                <Link to="/shop/oils" className="text-stone-200 hover:text-[#d4a574] transition-colors text-xs sm:text-sm flex items-center gap-2 group">
+                  <span className="w-1 h-1 bg-[#d4a574] rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"></span>
+                  Oils
+                </Link>
+              </li>
             </ul>
             
             <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 mt-5 sm:mt-6" style={{ fontFamily: 'Playfair Display, serif', color: '#d4a574' }}>

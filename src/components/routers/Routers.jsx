@@ -49,6 +49,7 @@ function Routers() {
             <Route path='/shop' element={<Products />} />
             <Route path='/shop/foods' element={<Products />} />
             <Route path='/shop/naturals' element={<Products />} />
+            <Route path='/shop/oils' element={<Products />} />
             <Route path='/shop/skin-care' element={<Navigate to="/shop/naturals" replace />} />
             <Route path='/shop/hair-care' element={<Navigate to="/shop/naturals" replace />} />
             <Route path='/shop/oral-care' element={<Navigate to="/shop/naturals" replace />} />

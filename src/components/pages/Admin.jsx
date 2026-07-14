@@ -348,6 +348,7 @@ function NewProductForm({ onCreated }) {
           <select value={form.category} onChange={e=>setField('category', e.target.value)} className="w-full border rounded px-3 py-2">
             <option value="foods">foods</option>
             <option value="naturals">naturals</option>
+            <option value="oils">oils</option>
           </select>
         </div>
         <div>
