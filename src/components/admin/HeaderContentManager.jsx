@@ -20,9 +20,9 @@ function HeaderContentManager() {
         href: '/shop',
         submenu: [
           { name: 'All Products', href: '/shop' },
-          { name: 'Foods', href: '/shop/foods' },
-          { name: 'Naturals', href: '/shop/naturals' },
-          { name: 'Oils', href: '/shop/oils' },
+          { name: 'Dehydrated Powders', href: '/shop/dehydrated-powders' },
+          { name: 'Health mix', href: '/shop/health-mix' },
+          { name: 'Wood Pressed Oils', href: '/shop/wood-pressed-oils' },
         ]
       },
       { name: 'Contact Us', href: '/contact' }

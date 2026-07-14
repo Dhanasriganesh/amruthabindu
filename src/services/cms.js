@@ -180,7 +180,7 @@ export async function saveProducts(products) {
   }
 }
 
-/** Rewrite legacy skin/hair/oral categories to Foods / Naturals / Oils in Firestore */
+/** Rewrite legacy categories to Dehydrated Powders / Health mix / Wood Pressed Oils */
 export async function migrateProductCategoriesInFirestore() {
   const products = await loadProducts()
   if (!products.length) {
@@ -195,18 +195,18 @@ export async function migrateProductCategoriesInFirestore() {
   return {
     ...result,
     migrated: count || normalized.length,
-    message: `Migrated ${count || normalized.length} product(s) to Foods / Naturals / Oils`,
+    message: `Migrated ${count || normalized.length} product(s) to Dehydrated Powders / Health mix / Wood Pressed Oils`,
   }
 }
 
-/** Move cold-pressed oil products from Naturals into Oils and persist */
+/** Move cold-pressed oil products into Wood Pressed Oils and persist */
 export async function migrateOilsCategoryInFirestore() {
   const products = await loadProducts()
   if (!products.length) {
     return { success: true, migrated: 0, message: 'No products to migrate' }
   }
   if (!productsNeedOilsCategoryMigration(products)) {
-    return { success: true, migrated: 0, message: 'Oil products already in Oils category' }
+    return { success: true, migrated: 0, message: 'Oil products already in Wood Pressed Oils' }
   }
   const migrated = applyOilsCategoryMigration(products)
   const count = migrated.filter((p, i) => p.category !== products[i]?.category).length
@@ -214,7 +214,7 @@ export async function migrateOilsCategoryInFirestore() {
   return {
     ...result,
     migrated: count,
-    message: `Moved ${count} oil product(s) into the Oils category`,
+    message: `Moved ${count} oil product(s) into Wood Pressed Oils`,
   }
 }
 

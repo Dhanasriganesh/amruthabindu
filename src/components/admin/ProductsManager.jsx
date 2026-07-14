@@ -38,7 +38,7 @@ function ProductsManager() {
       if (supabaseProducts?.length && productsNeedOilsCategoryMigration(supabaseProducts)) {
         const oilsResult = await migrateOilsCategoryInFirestore()
         if (oilsResult.success) {
-          setMigrationStatus(oilsResult.message || 'Oil products moved to Oils category')
+          setMigrationStatus(oilsResult.message || 'Oil products moved to Wood Pressed Oils')
           supabaseProducts = await loadProductsFromSupabase()
         }
       }
@@ -85,7 +85,7 @@ function ProductsManager() {
     setEditingProduct({
       id: Date.now(),
       name: '',
-      category: CATEGORY_SLUGS.NATURALS,
+      category: CATEGORY_SLUGS.DEHYDRATED_POWDERS,
       type: 'regular', // regular or bundle
       priority: 0, // Default priority
       description: '',

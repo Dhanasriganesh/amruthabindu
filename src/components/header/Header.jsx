@@ -35,9 +35,9 @@ import {
 const MOBILE_MENU_ITEMS = [
   { name: 'Home', href: '/home', icon: Home },
   { name: 'Shop', href: '/shop', icon: ShoppingBag },
-  { name: 'Foods', href: '/shop/foods', icon: Cookie },
-  { name: 'Naturals', href: '/shop/naturals', icon: Leaf },
-  { name: 'Oils', href: '/shop/oils', icon: Droplets },
+  { name: 'Dehydrated Powders', href: '/shop/dehydrated-powders', icon: Leaf },
+  { name: 'Health mix', href: '/shop/health-mix', icon: Cookie },
+  { name: 'Wood Pressed Oils', href: '/shop/wood-pressed-oils', icon: Droplets },
   { name: 'Track Order', href: '/orders', icon: Package },
   { name: 'About', href: '/about', icon: Info },
   { name: 'Contact Us', href: '/contact', icon: Mail },

@@ -212,35 +212,35 @@ function HomeContentManager() {
         <h4 className="text-lg font-bold text-gray-900 mb-4">Category Images</h4>
         <div className="space-y-4">
           <ImageField
-            label="Foods Category Image"
-            value={homeContent.categories?.foodsImage}
-            placeholder="/face.jpg"
-            onChange={(value) =>
-              setHomeContent({
-                ...homeContent,
-                categories: { ...homeContent.categories, foodsImage: value },
-              })
-            }
-          />
-          <ImageField
-            label="Naturals Category Image"
-            value={homeContent.categories?.naturalsImage}
+            label="Dehydrated Powders Category Image"
+            value={homeContent.categories?.dehydratedPowdersImage}
             placeholder="/hair.jpg"
             onChange={(value) =>
               setHomeContent({
                 ...homeContent,
-                categories: { ...homeContent.categories, naturalsImage: value },
+                categories: { ...homeContent.categories, dehydratedPowdersImage: value },
               })
             }
           />
           <ImageField
-            label="Oils Category Image"
-            value={homeContent.categories?.oilsImage}
+            label="Health mix Category Image"
+            value={homeContent.categories?.healthMixImage}
+            placeholder="/face.jpg"
+            onChange={(value) =>
+              setHomeContent({
+                ...homeContent,
+                categories: { ...homeContent.categories, healthMixImage: value },
+              })
+            }
+          />
+          <ImageField
+            label="Wood Pressed Oils Category Image"
+            value={homeContent.categories?.woodPressedOilsImage}
             placeholder="/products-images/cold-pressed-groundnuts-oil.png"
             onChange={(value) =>
               setHomeContent({
                 ...homeContent,
-                categories: { ...homeContent.categories, oilsImage: value },
+                categories: { ...homeContent.categories, woodPressedOilsImage: value },
               })
             }
           />

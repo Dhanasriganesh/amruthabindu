@@ -2,30 +2,40 @@
 
 export const CATEGORY_SLUGS = {
   ALL: 'all',
-  FOODS: 'foods',
-  NATURALS: 'naturals',
-  OILS: 'oils',
+  HEALTH_MIX: 'health-mix',
+  DEHYDRATED_POWDERS: 'dehydrated-powders',
+  WOOD_PRESSED_OILS: 'wood-pressed-oils',
 }
 
-/** Catalog slugs that belong in Oils (used to rematch products already in Firestore) */
+/** @deprecated Prefer HEALTH_MIX / DEHYDRATED_POWDERS / WOOD_PRESSED_OILS */
+export const CATEGORY_SLUG_ALIASES = {
+  FOODS: CATEGORY_SLUGS.HEALTH_MIX,
+  NATURALS: CATEGORY_SLUGS.DEHYDRATED_POWDERS,
+  OILS: CATEGORY_SLUGS.WOOD_PRESSED_OILS,
+}
+
+/** Catalog slugs that belong in Wood Pressed Oils */
 export const OILS_CATALOG_SLUGS = [
   'cold-pressed-groundnut-oil',
   'cold-pressed-white-sesame-oil',
   'cold-pressed-kuridi-coconut-oil',
 ]
 
-/** Legacy slugs migrated to Foods / Naturals / Oils in Firestore */
+/** Legacy slugs migrated to the current three shop categories */
 export const LEGACY_CATEGORY_MAP = {
-  'skin-care': CATEGORY_SLUGS.NATURALS,
-  'hair-care': CATEGORY_SLUGS.NATURALS,
-  'oral-care': CATEGORY_SLUGS.NATURALS,
-  'gift-hamper': CATEGORY_SLUGS.FOODS,
+  foods: CATEGORY_SLUGS.HEALTH_MIX,
+  naturals: CATEGORY_SLUGS.DEHYDRATED_POWDERS,
+  oils: CATEGORY_SLUGS.WOOD_PRESSED_OILS,
+  'skin-care': CATEGORY_SLUGS.DEHYDRATED_POWDERS,
+  'hair-care': CATEGORY_SLUGS.DEHYDRATED_POWDERS,
+  'oral-care': CATEGORY_SLUGS.DEHYDRATED_POWDERS,
+  'gift-hamper': CATEGORY_SLUGS.HEALTH_MIX,
 }
 
 const CANONICAL_PRODUCT_CATEGORIES = new Set([
-  CATEGORY_SLUGS.FOODS,
-  CATEGORY_SLUGS.NATURALS,
-  CATEGORY_SLUGS.OILS,
+  CATEGORY_SLUGS.HEALTH_MIX,
+  CATEGORY_SLUGS.DEHYDRATED_POWDERS,
+  CATEGORY_SLUGS.WOOD_PRESSED_OILS,
 ])
 
 export const SHOP_CATEGORIES = [
@@ -38,28 +48,28 @@ export const SHOP_CATEGORIES = [
     href: '/shop',
   },
   {
-    value: CATEGORY_SLUGS.FOODS,
-    label: 'Foods',
-    shortLabel: 'Foods',
-    description: 'Wholesome foods and nourishing staples',
+    value: CATEGORY_SLUGS.DEHYDRATED_POWDERS,
+    label: 'Dehydrated Powders',
+    shortLabel: 'Powders',
+    description: 'Nutrient-rich dehydrated leaf powders and blends',
+    icon: '🌿',
+    href: '/shop/dehydrated-powders',
+  },
+  {
+    value: CATEGORY_SLUGS.HEALTH_MIX,
+    label: 'Health mix',
+    shortLabel: 'Health mix',
+    description: 'Wholesome health mixes and nourishing blends',
     icon: '🥣',
-    href: '/shop/foods',
+    href: '/shop/health-mix',
   },
   {
-    value: CATEGORY_SLUGS.NATURALS,
-    label: 'Naturals',
-    shortLabel: 'Naturals',
-    description: 'Traditional powders and natural care',
-    icon: '🌱',
-    href: '/shop/naturals',
-  },
-  {
-    value: CATEGORY_SLUGS.OILS,
-    label: 'Oils',
+    value: CATEGORY_SLUGS.WOOD_PRESSED_OILS,
+    label: 'Wood Pressed Oils',
     shortLabel: 'Oils',
     description: 'Cold-pressed wood-pressed cooking oils',
     icon: '🫙',
-    href: '/shop/oils',
+    href: '/shop/wood-pressed-oils',
   },
 ]
 
@@ -68,10 +78,10 @@ export const PRODUCT_CATEGORY_OPTIONS = SHOP_CATEGORIES.filter(
 )
 
 export function normalizeCategorySlug(category) {
-  if (!category || typeof category !== 'string') return CATEGORY_SLUGS.NATURALS
+  if (!category || typeof category !== 'string') return CATEGORY_SLUGS.DEHYDRATED_POWDERS
   const slug = category.trim().toLowerCase()
   if (CANONICAL_PRODUCT_CATEGORIES.has(slug)) return slug
-  return LEGACY_CATEGORY_MAP[slug] || CATEGORY_SLUGS.NATURALS
+  return LEGACY_CATEGORY_MAP[slug] || CATEGORY_SLUGS.DEHYDRATED_POWDERS
 }
 
 export function getCategoryLabel(slug) {
@@ -81,9 +91,15 @@ export function getCategoryLabel(slug) {
 }
 
 export function getCategoryFromPath(pathname) {
-  if (pathname.includes('/shop/foods')) return CATEGORY_SLUGS.FOODS
-  if (pathname.includes('/shop/naturals')) return CATEGORY_SLUGS.NATURALS
-  if (pathname.includes('/shop/oils')) return CATEGORY_SLUGS.OILS
+  if (pathname.includes('/shop/dehydrated-powders') || pathname.includes('/shop/naturals')) {
+    return CATEGORY_SLUGS.DEHYDRATED_POWDERS
+  }
+  if (pathname.includes('/shop/health-mix') || pathname.includes('/shop/foods')) {
+    return CATEGORY_SLUGS.HEALTH_MIX
+  }
+  if (pathname.includes('/shop/wood-pressed-oils') || pathname.includes('/shop/oils')) {
+    return CATEGORY_SLUGS.WOOD_PRESSED_OILS
+  }
   return CATEGORY_SLUGS.ALL
 }
 
@@ -124,14 +140,15 @@ function looksLikeOilProduct(product) {
   )
 }
 
-/** Remap known oil products still stored as Naturals/Foods → Oils */
+/** Remap known oil products into Wood Pressed Oils */
 export function applyOilsCategoryMigration(products) {
   if (!Array.isArray(products)) return []
   return products.map((product) => {
-    if (!looksLikeOilProduct(product)) return normalizeProduct(product)
+    const normalized = normalizeProduct(product)
+    if (!looksLikeOilProduct(product)) return normalized
     return {
-      ...product,
-      category: CATEGORY_SLUGS.OILS,
+      ...normalized,
+      category: CATEGORY_SLUGS.WOOD_PRESSED_OILS,
     }
   })
 }
@@ -140,29 +157,30 @@ export function productsNeedOilsCategoryMigration(products) {
   if (!Array.isArray(products)) return false
   return products.some(
     (p) =>
-      looksLikeOilProduct(p) && normalizeCategorySlug(p.category) !== CATEGORY_SLUGS.OILS
+      looksLikeOilProduct(p) &&
+      normalizeCategorySlug(p.category) !== CATEGORY_SLUGS.WOOD_PRESSED_OILS
   )
 }
 
 /** Home page collection cards */
 export const HOME_COLLECTION_CATEGORIES = [
   {
-    name: 'Foods',
-    href: '/shop/foods',
-    image: '/face.jpg',
-    desc: 'Wholesome foods and nourishing staples',
-    span: '',
-  },
-  {
-    name: 'Naturals',
-    href: '/shop/naturals',
+    name: 'Dehydrated Powders',
+    href: '/shop/dehydrated-powders',
     image: '/hair.jpg',
-    desc: 'Traditional powders and natural care',
+    desc: 'Nutrient-rich dehydrated leaf powders and blends',
     span: '',
   },
   {
-    name: 'Oils',
-    href: '/shop/oils',
+    name: 'Health mix',
+    href: '/shop/health-mix',
+    image: '/face.jpg',
+    desc: 'Wholesome health mixes and nourishing blends',
+    span: '',
+  },
+  {
+    name: 'Wood Pressed Oils',
+    href: '/shop/wood-pressed-oils',
     image: '/products-images/cold-pressed-groundnuts-oil.png',
     desc: 'Cold-pressed wood-pressed cooking oils',
     span: '',

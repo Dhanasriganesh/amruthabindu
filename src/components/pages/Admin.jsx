@@ -253,7 +253,7 @@ function NewProductForm({ onCreated }) {
   const [form, setForm] = useState({
     id: '',
     name: '',
-    category: 'naturals',
+    category: 'dehydrated-powders',
     description: '',
     fullDescription: '',
     benefits: '',
@@ -346,9 +346,9 @@ function NewProductForm({ onCreated }) {
         <div>
           <label className="block text-sm font-medium mb-1">Category</label>
           <select value={form.category} onChange={e=>setField('category', e.target.value)} className="w-full border rounded px-3 py-2">
-            <option value="foods">foods</option>
-            <option value="naturals">naturals</option>
-            <option value="oils">oils</option>
+            <option value="dehydrated-powders">Dehydrated Powders</option>
+            <option value="health-mix">Health mix</option>
+            <option value="wood-pressed-oils">Wood Pressed Oils</option>
           </select>
         </div>
         <div>

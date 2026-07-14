@@ -11,9 +11,9 @@ export const DEFAULT_HOME_CONTENT = {
       'Every powder tells a story of soil, sun, and generations of Ayurvedic wisdom — bottled without compromise.',
   },
   categories: {
-    foodsImage: HOME_COLLECTION_CATEGORIES[0]?.image || '/face.jpg',
-    naturalsImage: HOME_COLLECTION_CATEGORIES[1]?.image || '/hair.jpg',
-    oilsImage:
+    dehydratedPowdersImage: HOME_COLLECTION_CATEGORIES[0]?.image || '/hair.jpg',
+    healthMixImage: HOME_COLLECTION_CATEGORIES[1]?.image || '/face.jpg',
+    woodPressedOilsImage:
       HOME_COLLECTION_CATEGORIES[2]?.image ||
       '/products-images/cold-pressed-groundnuts-oil.png',
   },
@@ -140,16 +140,20 @@ export function mergeHomeContent(cms) {
         DEFAULT_HOME_CONTENT.manifesto.description,
     },
     categories: {
-      foodsImage:
-        cms.categories?.foodsImage ||
-        cms.categories?.skinCareImage ||
-        DEFAULT_HOME_CONTENT.categories.foodsImage,
-      naturalsImage:
+      dehydratedPowdersImage:
+        cms.categories?.dehydratedPowdersImage ||
         cms.categories?.naturalsImage ||
         cms.categories?.hairCareImage ||
-        DEFAULT_HOME_CONTENT.categories.naturalsImage,
-      oilsImage:
-        cms.categories?.oilsImage || DEFAULT_HOME_CONTENT.categories.oilsImage,
+        DEFAULT_HOME_CONTENT.categories.dehydratedPowdersImage,
+      healthMixImage:
+        cms.categories?.healthMixImage ||
+        cms.categories?.foodsImage ||
+        cms.categories?.skinCareImage ||
+        DEFAULT_HOME_CONTENT.categories.healthMixImage,
+      woodPressedOilsImage:
+        cms.categories?.woodPressedOilsImage ||
+        cms.categories?.oilsImage ||
+        DEFAULT_HOME_CONTENT.categories.woodPressedOilsImage,
     },
     featuresHeading: {
       label: cms.featuresHeading?.label || DEFAULT_HOME_CONTENT.featuresHeading.label,
@@ -194,19 +198,19 @@ export function readHomeContentCache() {
 }
 
 export function buildHomeCategories(content) {
-  const [foods, naturals, oils] = HOME_COLLECTION_CATEGORIES
+  const [powders, healthMix, oils] = HOME_COLLECTION_CATEGORIES
   return [
     {
-      ...foods,
-      image: content.categories.foodsImage || foods.image,
+      ...powders,
+      image: content.categories.dehydratedPowdersImage || powders.image,
     },
     {
-      ...naturals,
-      image: content.categories.naturalsImage || naturals.image,
+      ...healthMix,
+      image: content.categories.healthMixImage || healthMix.image,
     },
     {
       ...oils,
-      image: content.categories.oilsImage || oils.image,
+      image: content.categories.woodPressedOilsImage || oils.image,
     },
   ]
 }

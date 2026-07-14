@@ -12,17 +12,56 @@ export const DEFAULT_HEADER = {
       hasDropdown: true,
       submenu: [
         { name: 'All Products', href: '/shop', icon: '🌿' },
-        { name: 'Foods', href: '/shop/foods', icon: '🥣' },
-        { name: 'Naturals', href: '/shop/naturals', icon: '🌱' },
-        { name: 'Oils', href: '/shop/oils', icon: '🫙' },
+        { name: 'Dehydrated Powders', href: '/shop/dehydrated-powders', icon: '🌱' },
+        { name: 'Health mix', href: '/shop/health-mix', icon: '🥣' },
+        { name: 'Wood Pressed Oils', href: '/shop/wood-pressed-oils', icon: '🫙' },
       ],
     },
-    { name: 'Foods', href: '/shop/foods' },
-    { name: 'Naturals', href: '/shop/naturals' },
-    { name: 'Oils', href: '/shop/oils' },
+    { name: 'Dehydrated Powders', href: '/shop/dehydrated-powders' },
+    { name: 'Health mix', href: '/shop/health-mix' },
+    { name: 'Wood Pressed Oils', href: '/shop/wood-pressed-oils' },
     { name: 'About Us', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ],
+}
+
+const CATEGORY_NAV_TARGETS = [
+  {
+    name: 'Dehydrated Powders',
+    href: '/shop/dehydrated-powders',
+    icon: '🌱',
+    matchNames: ['dehydrated powders', 'naturals'],
+    matchHrefs: ['/shop/dehydrated-powders', '/shop/naturals'],
+  },
+  {
+    name: 'Health mix',
+    href: '/shop/health-mix',
+    icon: '🥣',
+    matchNames: ['health mix', 'foods'],
+    matchHrefs: ['/shop/health-mix', '/shop/foods'],
+  },
+  {
+    name: 'Wood Pressed Oils',
+    href: '/shop/wood-pressed-oils',
+    icon: '🫙',
+    matchNames: ['wood pressed oils', 'oils'],
+    matchHrefs: ['/shop/wood-pressed-oils', '/shop/oils'],
+  },
+]
+
+function matchesCategoryNav(item, target) {
+  const name = (item.name || '').trim().toLowerCase()
+  const href = (item.href || '').trim().toLowerCase()
+  return target.matchNames.includes(name) || target.matchHrefs.some((h) => href.includes(h))
+}
+
+function normalizeNavItem(item) {
+  for (const target of CATEGORY_NAV_TARGETS) {
+    if (matchesCategoryNav(item, target)) {
+      return { ...item, name: target.name, href: target.href, icon: item.icon || target.icon }
+    }
+  }
+  return item
 }
 
 /** Map CMS navigation items to the shape Header expects */
@@ -33,29 +72,38 @@ export function mapCmsNavigation(cmsNav) {
 
   return cmsNav.map((item) => {
     const submenu = Array.isArray(item.submenu) ? item.submenu : []
-    let nextSubmenu = submenu.map((sub) => ({
-      name: sub.name || 'Link',
-      href: sub.href || '/',
-      icon: sub.icon || '•',
-    }))
+    let nextSubmenu = submenu.map((sub) => {
+      const mapped = normalizeNavItem({
+        name: sub.name || 'Link',
+        href: sub.href || '/',
+        icon: sub.icon || '•',
+      })
+      return mapped
+    })
 
-    // Ensure Oils appears under Shop for older CMS header documents
     const href = (item.href || '').toLowerCase()
-    const isShop = item.name?.toLowerCase() === 'shop' || href === '/shop' || href.startsWith('/shop')
+    const isShop =
+      item.name?.toLowerCase() === 'shop' || href === '/shop' || href.startsWith('/shop')
     if (isShop && nextSubmenu.length > 0) {
-      const hasOils = nextSubmenu.some(
-        (sub) =>
-          (sub.href || '').includes('/shop/oils') ||
-          (sub.name || '').toLowerCase() === 'oils'
-      )
-      if (!hasOils) {
-        nextSubmenu = [...nextSubmenu, { name: 'Oils', href: '/shop/oils', icon: '🫙' }]
+      for (const target of CATEGORY_NAV_TARGETS) {
+        const hasCategory = nextSubmenu.some((sub) => matchesCategoryNav(sub, target))
+        if (!hasCategory) {
+          nextSubmenu = [
+            ...nextSubmenu,
+            { name: target.name, href: target.href, icon: target.icon },
+          ]
+        }
       }
     }
 
-    return {
+    const normalizedItem = normalizeNavItem({
       name: item.name || 'Menu',
       href: item.href || '/',
+    })
+
+    return {
+      name: normalizedItem.name,
+      href: normalizedItem.href,
       hasDropdown: nextSubmenu.length > 0,
       submenu: nextSubmenu,
     }
@@ -68,25 +116,20 @@ export function mergeHeaderContent(cms) {
   }
 
   let navigation = mapCmsNavigation(cms.navigation)
-  const hasTopLevelOils = navigation.some(
-    (item) =>
-      (item.href || '').includes('/shop/oils') || (item.name || '').toLowerCase() === 'oils'
-  )
-  if (!hasTopLevelOils) {
-    const naturalsIndex = navigation.findIndex(
-      (item) =>
-        (item.href || '').includes('/shop/naturals') ||
-        (item.name || '').toLowerCase() === 'naturals'
-    )
-    const oilsItem = { name: 'Oils', href: '/shop/oils' }
-    if (naturalsIndex >= 0) {
+
+  for (const target of CATEGORY_NAV_TARGETS) {
+    const hasTopLevel = navigation.some((item) => matchesCategoryNav(item, target))
+    if (!hasTopLevel) {
+      const shopIndex = navigation.findIndex(
+        (item) =>
+          (item.name || '').toLowerCase() === 'shop' || (item.href || '') === '/shop'
+      )
+      const insertAt = shopIndex >= 0 ? shopIndex + 1 : navigation.length
       navigation = [
-        ...navigation.slice(0, naturalsIndex + 1),
-        oilsItem,
-        ...navigation.slice(naturalsIndex + 1),
+        ...navigation.slice(0, insertAt),
+        { name: target.name, href: target.href },
+        ...navigation.slice(insertAt),
       ]
-    } else {
-      navigation = [...navigation, oilsItem]
     }
   }
 

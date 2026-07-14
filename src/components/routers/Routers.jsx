@@ -47,12 +47,15 @@ function Routers() {
             <Route path='/about/sustainability' element={<About />} />
             <Route path='/about/ingredients' element={<About />} />
             <Route path='/shop' element={<Products />} />
-            <Route path='/shop/foods' element={<Products />} />
-            <Route path='/shop/naturals' element={<Products />} />
-            <Route path='/shop/oils' element={<Products />} />
-            <Route path='/shop/skin-care' element={<Navigate to="/shop/naturals" replace />} />
-            <Route path='/shop/hair-care' element={<Navigate to="/shop/naturals" replace />} />
-            <Route path='/shop/oral-care' element={<Navigate to="/shop/naturals" replace />} />
+            <Route path='/shop/dehydrated-powders' element={<Products />} />
+            <Route path='/shop/health-mix' element={<Products />} />
+            <Route path='/shop/wood-pressed-oils' element={<Products />} />
+            <Route path='/shop/foods' element={<Navigate to="/shop/health-mix" replace />} />
+            <Route path='/shop/naturals' element={<Navigate to="/shop/dehydrated-powders" replace />} />
+            <Route path='/shop/oils' element={<Navigate to="/shop/wood-pressed-oils" replace />} />
+            <Route path='/shop/skin-care' element={<Navigate to="/shop/dehydrated-powders" replace />} />
+            <Route path='/shop/hair-care' element={<Navigate to="/shop/dehydrated-powders" replace />} />
+            <Route path='/shop/oral-care' element={<Navigate to="/shop/dehydrated-powders" replace />} />
             <Route path='/shop/product/:id' element={<ProductDetail />} />
             <Route path='/bundle/:id' element={<BundlePage />} />
             <Route path='/contact' element={<Contact />} />

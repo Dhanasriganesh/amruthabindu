@@ -184,21 +184,21 @@ function Footer() {
             </h3>
             <ul className="space-y-2 sm:space-y-2.5">
               <li>
-                <Link to="/shop/foods" className="text-stone-200 hover:text-[#d4a574] transition-colors text-xs sm:text-sm flex items-center gap-2 group">
+                <Link to="/shop/dehydrated-powders" className="text-stone-200 hover:text-[#d4a574] transition-colors text-xs sm:text-sm flex items-center gap-2 group">
                   <span className="w-1 h-1 bg-[#d4a574] rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"></span>
-                  Foods
+                  Dehydrated Powders
                 </Link>
               </li>
               <li>
-                <Link to="/shop/naturals" className="text-stone-200 hover:text-[#d4a574] transition-colors text-xs sm:text-sm flex items-center gap-2 group">
+                <Link to="/shop/health-mix" className="text-stone-200 hover:text-[#d4a574] transition-colors text-xs sm:text-sm flex items-center gap-2 group">
                   <span className="w-1 h-1 bg-[#d4a574] rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"></span>
-                  Naturals
+                  Health mix
                 </Link>
               </li>
               <li>
-                <Link to="/shop/oils" className="text-stone-200 hover:text-[#d4a574] transition-colors text-xs sm:text-sm flex items-center gap-2 group">
+                <Link to="/shop/wood-pressed-oils" className="text-stone-200 hover:text-[#d4a574] transition-colors text-xs sm:text-sm flex items-center gap-2 group">
                   <span className="w-1 h-1 bg-[#d4a574] rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"></span>
-                  Oils
+                  Wood Pressed Oils
                 </Link>
               </li>
             </ul>
