@@ -10,6 +10,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import homeMobHero from '../assets/home-mob-hero.jpeg'
+import mainBg from '../assets/main-bg.jpeg'
 
 const DEFAULT_SLIDES = [
   {
@@ -22,33 +23,6 @@ const DEFAULT_SLIDES = [
     ctaPrimaryLink: '/shop',
     ctaSecondary: 'Our Story',
     ctaSecondaryLink: '/about',
-  },
-]
-
-const RITUAL_CARDS = [
-  {
-    icon: Droplets,
-    label: 'Skin Rituals',
-    sub: 'Bath & face powders',
-    gradient: 'from-emerald-400/90 via-teal-600/80 to-emerald-900',
-    rotate: -8,
-    y: 0,
-  },
-  {
-    icon: Wind,
-    label: 'Hair Vitality',
-    sub: 'Root to tip care',
-    gradient: 'from-amber-300/90 via-orange-500/75 to-amber-900',
-    rotate: 6,
-    y: -24,
-  },
-  {
-    icon: Leaf,
-    label: 'Oral Heritage',
-    sub: 'Traditional powders',
-    gradient: 'from-lime-300/80 via-green-600/75 to-emerald-950',
-    rotate: -4,
-    y: 12,
   },
 ]
 
@@ -89,8 +63,6 @@ function HeroCarousel({ slides = [] }) {
   const orb2X = useTransform(smoothX, [-0.5, 0.5], [17, -17])
   const orb2Y = useTransform(smoothY, [-0.5, 0.5], [16, -16])
   const orb3X = useTransform(smoothX, [-0.5, 0.5], [-34, 34])
-  const cardRotateY = useTransform(smoothX, [-0.5, 0.5], [-12, 12])
-  const cardRotateX = useTransform(smoothY, [-0.5, 0.5], [8, -8])
 
   useEffect(() => {
     setCurrentSlide(0)
@@ -134,41 +106,43 @@ function HeroCarousel({ slides = [] }) {
         </div>
       </section>
 
-      {/* Tablet / desktop: existing premium carousel */}
+      {/* Tablet / desktop: modified premium hero section with main-bg.jpeg */}
       <section
         className="hero-premium relative hidden min-h-[min(100vh,920px)] md:flex flex-col overflow-hidden -mt-1"
         onMouseMove={handleMouseMove}
       >
-        <div className="hero-premium__bg absolute inset-0" />
-        {slide.image && (
-          <div
-            className="absolute inset-0 bg-cover bg-center opacity-20"
-            style={{ backgroundImage: `url(${slide.image})` }}
-            aria-hidden="true"
+        {/* Full bleed hero section image replacement */}
+        <div className="absolute inset-0 w-full h-full z-0">
+          <img 
+            src={mainBg} 
+            alt="Amrutha Bindu Background" 
+            className="w-full h-full object-cover object-center"
+            fetchPriority="high"
           />
-        )}
-        <div className="hero-premium__mesh absolute inset-0" />
-        <div className="hero-premium__grid absolute inset-0 opacity-[0.35]" />
+          {/* Subtle overlay adjustments to enhance readability over the background image */}
+          <div className="absolute inset-0 bg-white/10 mix-blend-overlay" />
+          <div className="hero-premium__mesh absolute inset-0 opacity-40" />
+        </div>
+
+        <div className="hero-premium__grid absolute inset-0 opacity-[0.2] pointer-events-none z-0" />
 
         <motion.div
-          className="hero-premium__orb hero-premium__orb--1"
+          className="hero-premium__orb hero-premium__orb--1 z-0 pointer-events-none"
           style={{ x: orbX, y: orbY }}
         />
         <motion.div
-          className="hero-premium__orb hero-premium__orb--2"
+          className="hero-premium__orb hero-premium__orb--2 z-0 pointer-events-none"
           style={{ x: orb2X, y: orb2Y }}
         />
         <motion.div
-          className="hero-premium__orb hero-premium__orb--3"
+          className="hero-premium__orb hero-premium__orb--3 z-0 pointer-events-none"
           style={{ x: orb3X, y: orbY }}
         />
 
-        <div className="hero-premium__ring absolute right-[8%] top-1/2 -translate-y-1/2 hidden lg:block" />
-
-        <div className="relative z-10 flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 pb-8">
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-6 items-center min-h-[calc(100vh-180px)] lg:min-h-0">
+        <div className="relative z-10 flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 pb-8 flex items-center">
+          <div className="w-full max-w-2xl text-center md:text-left">
             {/* Copy */}
-            <div className="order-2 lg:order-1 text-center lg:text-left">
+            <div>
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -204,7 +178,7 @@ function HeroCarousel({ slides = [] }) {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.45, duration: 0.7 }}
-                    className="mt-6 text-base sm:text-lg text-stone-600 max-w-lg mx-auto lg:mx-0 leading-relaxed font-body-premium"
+                    className="mt-6 text-base sm:text-lg text-stone-800 max-w-lg mx-auto md:mx-0 leading-relaxed font-body-premium bg-white/20 backdrop-blur-xs rounded-xl p-2 md:p-0"
                   >
                     {slide.description}
                   </motion.p>
@@ -215,7 +189,7 @@ function HeroCarousel({ slides = [] }) {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.55 }}
-                className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
+                className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-4 justify-center md:justify-start"
               >
                 <Link
                   to={slide.ctaPrimaryLink || '/shop'}
@@ -234,7 +208,7 @@ function HeroCarousel({ slides = [] }) {
               </motion.div>
 
               {activeSlides.length > 1 && (
-                <div className="mt-10 flex items-center justify-center lg:justify-start gap-3">
+                <div className="mt-10 flex items-center justify-center md:justify-start gap-3">
                   {activeSlides.map((_, i) => (
                     <button
                       key={i}
@@ -251,75 +225,11 @@ function HeroCarousel({ slides = [] }) {
                 </div>
               )}
             </div>
-
-            {/* Visual stage — 3D ritual cards */}
-            <motion.div
-              className="order-1 lg:order-2 relative h-[340px] sm:h-[400px] lg:h-[520px] home-perspective"
-              style={{ rotateY: cardRotateY, rotateX: cardRotateX }}
-            >
-              <div className="absolute inset-0 flex items-center justify-center">
-                {RITUAL_CARDS.map((card, i) => (
-                  <motion.div
-                    key={card.label}
-                    className={`absolute top-1/2 w-[38%] max-w-[190px] aspect-[3/4] rounded-3xl bg-gradient-to-br ${card.gradient} p-5 sm:p-6 shadow-2xl border border-white/20 flex flex-col justify-between overflow-hidden`}
-                    style={{
-                      left: `${8 + i * 24}%`,
-                      rotate: card.rotate,
-                      zIndex: i === 1 ? 30 : 20 - i,
-                    }}
-                    initial={{ opacity: 0, y: '-35%', scale: 0.85 }}
-                    animate={{
-                      opacity: 1,
-                      y: `calc(-50% + ${card.y}px)`,
-                      scale: 1,
-                    }}
-                    transition={{ delay: 0.2 + i * 0.15, type: 'spring', stiffness: 80 }}
-                    whileHover={{ scale: 1.05, zIndex: 40 }}
-                  >
-                    <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/15 blur-2xl" />
-                    <card.icon className="text-white/90 w-10 h-10 sm:w-12 sm:h-12" strokeWidth={1.25} />
-                    <div>
-                      <p className="font-display text-xl sm:text-2xl text-white leading-tight">
-                        {card.label}
-                      </p>
-                      <p className="text-white/75 text-xs sm:text-sm mt-1 font-body-premium">
-                        {card.sub}
-                      </p>
-                    </div>
-                    <div className="h-1 w-full rounded-full bg-white/30 overflow-hidden">
-                      <motion.div
-                        className="h-full bg-white/80 rounded-full"
-                        animate={{ width: ['20%', '85%', '40%'] }}
-                        transition={{ duration: 4 + i, repeat: Infinity, ease: 'easeInOut' }}
-                      />
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Center emblem */}
-              <motion.div
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 sm:w-36 sm:h-36 rounded-full border-2 border-[var(--home-gold)]/50 flex items-center justify-center bg-white/80 backdrop-blur-xl shadow-2xl z-50"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
-              >
-                <motion.div
-                  animate={{ scale: [1, 1.08, 1] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                  className="text-center"
-                >
-                  <Leaf className="w-10 h-10 text-[var(--home-forest)] mx-auto" />
-                  <span className="font-display text-[10px] sm:text-xs text-[var(--home-forest)] tracking-widest mt-1 block">
-                    PURE
-                  </span>
-                </motion.div>
-              </motion.div>
-            </motion.div>
           </div>
         </div>
 
         {/* Bottom stats + scroll */}
-        <div className="relative z-10 border-t border-stone-200/60 bg-white/50 backdrop-blur-md">
+        <div className="relative z-10 border-t border-stone-200/60 bg-white/50 backdrop-blur-md mt-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap gap-6 sm:gap-10 text-center sm:text-left">
               {[
@@ -351,4 +261,4 @@ function HeroCarousel({ slides = [] }) {
   )
 }
 
-export default HeroCarousel
+export default HeroCarousel;
