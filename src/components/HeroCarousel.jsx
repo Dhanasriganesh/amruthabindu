@@ -15,10 +15,10 @@ import mainBg from '../assets/main-bg.jpeg'
 const DEFAULT_SLIDES = [
   {
     id: 'default-1',
-    title: 'Timeless Beauty,',
-    titleAccent: 'Naturally Yours',
+    title: '',
+    titleAccent: '',
     description:
-      'Ayurvedic powders handcrafted in small batches — pure, potent, and free from everything your skin should never meet.',
+      '',
     ctaPrimary: 'Explore Collection',
     ctaPrimaryLink: '/shop',
     ctaSecondary: 'Our Story',
