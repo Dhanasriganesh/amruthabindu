@@ -8,7 +8,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import homeMobHero from '../assets/home-mob-hero.jpeg'
-import mainbg from '../assets/mainbg.jpeg'
+import mainbg from '../assets/main-bg.jpeg'
 
 const DEFAULT_SLIDES = [
   {
