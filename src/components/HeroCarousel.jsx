@@ -5,11 +5,10 @@ import {
   ArrowRight,
   Sparkles,
   Leaf,
-  Droplets,
-  Wind,
   ChevronDown,
 } from 'lucide-react'
 import homeMobHero from '../assets/home-mob-hero.jpeg'
+import mainbg from '../assets/mainbg.jpeg'
 
 const DEFAULT_SLIDES = [
   {
@@ -22,33 +21,7 @@ const DEFAULT_SLIDES = [
     ctaPrimaryLink: '/shop',
     ctaSecondary: 'Our Story',
     ctaSecondaryLink: '/about',
-  },
-]
-
-const RITUAL_CARDS = [
-  {
-    icon: Droplets,
-    label: 'Skin Rituals',
-    sub: 'Bath & face powders',
-    gradient: 'from-emerald-400/90 via-teal-600/80 to-emerald-900',
-    rotate: -8,
-    y: 0,
-  },
-  {
-    icon: Wind,
-    label: 'Hair Vitality',
-    sub: 'Root to tip care',
-    gradient: 'from-amber-300/90 via-orange-500/75 to-amber-900',
-    rotate: 6,
-    y: -24,
-  },
-  {
-    icon: Leaf,
-    label: 'Oral Heritage',
-    sub: 'Traditional powders',
-    gradient: 'from-lime-300/80 via-green-600/75 to-emerald-950',
-    rotate: -4,
-    y: 12,
+    image: mainbg,
   },
 ]
 
@@ -112,7 +85,7 @@ function HeroCarousel({ slides = [] }) {
 
   return (
     <>
-      {/* Mobile-only: full-bleed illustrative hero */}
+      {/* Mobile-only: full-bleed illustrative hero — UNCHANGED */}
       <section className="hero-mobile md:hidden relative -mt-1 w-full overflow-hidden">
         <div className="relative w-full min-h-[100svh]">
           <img
@@ -134,7 +107,7 @@ function HeroCarousel({ slides = [] }) {
         </div>
       </section>
 
-      {/* Tablet / desktop: existing premium carousel */}
+      {/* Tablet / desktop: premium carousel, now with image hero */}
       <section
         className="hero-premium relative hidden min-h-[min(100vh,920px)] md:flex flex-col overflow-hidden -mt-1"
         onMouseMove={handleMouseMove}
@@ -142,11 +115,12 @@ function HeroCarousel({ slides = [] }) {
         <div className="hero-premium__bg absolute inset-0" />
         {slide.image && (
           <div
-            className="absolute inset-0 bg-cover bg-center opacity-20"
+            className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${slide.image})` }}
             aria-hidden="true"
           />
         )}
+        <div className="absolute inset-0 bg-white/55" aria-hidden="true" />
         <div className="hero-premium__mesh absolute inset-0" />
         <div className="hero-premium__grid absolute inset-0 opacity-[0.35]" />
 
@@ -252,50 +226,24 @@ function HeroCarousel({ slides = [] }) {
               )}
             </div>
 
-            {/* Visual stage — 3D ritual cards */}
+            {/* Visual stage — hero image */}
             <motion.div
               className="order-1 lg:order-2 relative h-[340px] sm:h-[400px] lg:h-[520px] home-perspective"
               style={{ rotateY: cardRotateY, rotateX: cardRotateX }}
             >
-              <div className="absolute inset-0 flex items-center justify-center">
-                {RITUAL_CARDS.map((card, i) => (
-                  <motion.div
-                    key={card.label}
-                    className={`absolute top-1/2 w-[38%] max-w-[190px] aspect-[3/4] rounded-3xl bg-gradient-to-br ${card.gradient} p-5 sm:p-6 shadow-2xl border border-white/20 flex flex-col justify-between overflow-hidden`}
-                    style={{
-                      left: `${8 + i * 24}%`,
-                      rotate: card.rotate,
-                      zIndex: i === 1 ? 30 : 20 - i,
-                    }}
-                    initial={{ opacity: 0, y: '-35%', scale: 0.85 }}
-                    animate={{
-                      opacity: 1,
-                      y: `calc(-50% + ${card.y}px)`,
-                      scale: 1,
-                    }}
-                    transition={{ delay: 0.2 + i * 0.15, type: 'spring', stiffness: 80 }}
-                    whileHover={{ scale: 1.05, zIndex: 40 }}
-                  >
-                    <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/15 blur-2xl" />
-                    <card.icon className="text-white/90 w-10 h-10 sm:w-12 sm:h-12" strokeWidth={1.25} />
-                    <div>
-                      <p className="font-display text-xl sm:text-2xl text-white leading-tight">
-                        {card.label}
-                      </p>
-                      <p className="text-white/75 text-xs sm:text-sm mt-1 font-body-premium">
-                        {card.sub}
-                      </p>
-                    </div>
-                    <div className="h-1 w-full rounded-full bg-white/30 overflow-hidden">
-                      <motion.div
-                        className="h-full bg-white/80 rounded-full"
-                        animate={{ width: ['20%', '85%', '40%'] }}
-                        transition={{ duration: 4 + i, repeat: Infinity, ease: 'easeInOut' }}
-                      />
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+              <motion.div
+                className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl border border-white/20"
+                initial={{ opacity: 0, y: '-10%', scale: 0.92 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ delay: 0.2, type: 'spring', stiffness: 80 }}
+              >
+                <img
+                  src={mainbg}
+                  alt="Amrutha Bindu hero"
+                  className="h-full w-full object-cover object-center"
+                />
+                <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/15 blur-2xl pointer-events-none" />
+              </motion.div>
 
               {/* Center emblem */}
               <motion.div
