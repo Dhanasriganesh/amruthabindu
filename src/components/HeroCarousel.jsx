@@ -95,13 +95,18 @@ function HeroCarousel({ slides = [] }) {
         />
 
         <div className="relative z-10 flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 pb-8">
-          <div className="flex items-center min-h-[calc(100vh-180px)]">
-            <div className="text-center lg:text-left">
+          <div className="flex items-end justify-start min-h-[calc(100vh-180px)] pb-2 lg:pb-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="hero-premium__glass rounded-2xl px-5 sm:px-6 py-5 sm:py-6 w-fit max-w-[min(100%,320px)] sm:max-w-[340px] text-left"
+            >
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--home-gold)]/40 bg-white/60 backdrop-blur-md shadow-sm mb-6 sm:mb-8"
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--home-gold)]/35 bg-white/50 backdrop-blur-sm shadow-sm mb-4"
               >
                 <Sparkles size={14} className="text-[var(--home-gold)]" />
                 <span className="text-xs sm:text-sm font-semibold tracking-[0.2em] uppercase text-[var(--home-forest)] font-body-premium">
@@ -117,25 +122,29 @@ function HeroCarousel({ slides = [] }) {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.4 }}
                 >
-                  <h1 className="font-display text-[2.5rem] sm:text-5xl md:text-6xl lg:text-7xl xl:text-[4.75rem] leading-[1.02] text-[var(--home-ink)] mb-1">
+                  <h1 className="font-display text-3xl sm:text-4xl lg:text-[2.75rem] leading-[1.08] text-[var(--home-ink)] mb-1">
                     <HeroTitleLetters text={slide.title || ''} className="block" />
-                    <span className="block mt-1 home-shimmer-text">
-                      <HeroTitleLetters
-                        text={slide.titleAccent || ''}
-                        delay={0.25}
-                        className="block"
-                      />
-                    </span>
+                    {slide.titleAccent ? (
+                      <span className="block mt-1 home-shimmer-text">
+                        <HeroTitleLetters
+                          text={slide.titleAccent}
+                          delay={0.25}
+                          className="block"
+                        />
+                      </span>
+                    ) : null}
                   </h1>
 
-                  <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.45, duration: 0.7 }}
-                    className="mt-6 text-base sm:text-lg text-stone-600 max-w-lg mx-auto lg:mx-0 leading-relaxed font-body-premium"
-                  >
-                    {slide.description}
-                  </motion.p>
+                  {slide.description ? (
+                    <motion.p
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.45, duration: 0.7 }}
+                      className="mt-4 text-sm sm:text-base text-stone-600 leading-relaxed font-body-premium"
+                    >
+                      {slide.description}
+                    </motion.p>
+                  ) : null}
                 </motion.div>
               </AnimatePresence>
 
@@ -143,26 +152,26 @@ function HeroCarousel({ slides = [] }) {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.55 }}
-                className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
+                className="mt-5 sm:mt-6 flex flex-col gap-3"
               >
                 <Link
                   to={slide.ctaPrimaryLink || '/shop'}
-                  className="group relative inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-[var(--home-forest)] text-white font-semibold overflow-hidden shadow-xl shadow-emerald-900/25 font-body-premium hover:shadow-2xl transition-shadow"
+                  className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[var(--home-forest)] text-white text-sm font-semibold overflow-hidden shadow-lg shadow-emerald-900/20 font-body-premium hover:shadow-xl transition-shadow"
                 >
                   <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                   {slide.ctaPrimary || 'Shop Now'}
-                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                 </Link>
                 <Link
                   to={slide.ctaSecondaryLink || '/about'}
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full border-2 border-[var(--home-forest)]/30 text-[var(--home-forest)] font-semibold bg-white/70 backdrop-blur-sm hover:bg-white hover:border-[var(--home-forest)] transition-all font-body-premium"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border-2 border-[var(--home-forest)]/30 text-[var(--home-forest)] text-sm font-semibold bg-white/70 backdrop-blur-sm hover:bg-white hover:border-[var(--home-forest)] transition-all font-body-premium"
                 >
                   {slide.ctaSecondary || 'Discover More'}
                 </Link>
               </motion.div>
 
               {activeSlides.length > 1 && (
-                <div className="mt-10 flex items-center justify-center lg:justify-start gap-3">
+                <div className="mt-5 flex items-center gap-3">
                   {activeSlides.map((_, i) => (
                     <button
                       key={i}
@@ -178,7 +187,7 @@ function HeroCarousel({ slides = [] }) {
                   ))}
                 </div>
               )}
-            </div>
+            </motion.div>
           </div>
         </div>
 
