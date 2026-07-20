@@ -25,7 +25,6 @@ function sortSlidesByOrder(slides) {
 export const defaultSlides = [
   {
     id: 'default-1',
-    image: '/top.jpg',
     title: 'Timeless Beauty,',
     titleAccent: 'Naturally Yours',
     description:
@@ -43,7 +42,6 @@ function mapSlide(docSnap) {
   const slide = docSnap.data()
   return {
     id: docSnap.id,
-    image: slide.image_url,
     title: slide.title,
     titleAccent: slide.title_accent,
     description: slide.description,
@@ -58,7 +56,6 @@ function mapSlide(docSnap) {
 
 function slideToFirestore(slideData) {
   return {
-    image_url: slideData.image,
     title: slideData.title,
     title_accent: slideData.titleAccent,
     description: slideData.description,

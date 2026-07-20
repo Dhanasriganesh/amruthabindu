@@ -116,7 +116,7 @@ function HomeContentManager() {
         <div>
           <h3 className="text-xl font-bold text-gray-900">Home Page Content</h3>
           <p className="text-sm text-gray-500 mt-1">
-            Hero carousel is managed under Hero Slides. Everything below matches the live home page.
+            Hero overlay content is managed under Hero Slides. Everything below matches the live home page.
           </p>
         </div>
         <div className="flex gap-3">
@@ -140,7 +140,7 @@ function HomeContentManager() {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-        The top hero banner is edited in <strong>Hero Slides</strong>. This page controls manifesto, categories,
+        The top hero overlay text and buttons are edited in <strong>Hero Slides</strong>. Hero background images are fixed in the site code. This page controls manifesto, categories,
         features, products heading, testimonials, and newsletter sections.
       </div>
 

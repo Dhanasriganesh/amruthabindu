@@ -50,7 +50,7 @@ function AdminDashboard() {
     { id: 'email-marketing', label: 'Email Marketing', icon: <MailPlus size={20} />, description: 'Send bulk emails' },
     { id: 'products', label: 'Products', icon: <Package size={20} />, description: 'Manage products' },
     { id: 'coupons', label: 'Coupons', icon: <Tag size={20} />, description: 'Manage coupons' },
-    { id: 'hero', label: 'Hero Slides', icon: <Image size={20} />, description: 'Edit homepage slides' },
+    { id: 'hero', label: 'Hero Slides', icon: <Image size={20} />, description: 'Edit hero text and buttons' },
     { id: 'home', label: 'Home Content', icon: <Home size={20} />, description: 'Edit home page' },
     { id: 'header', label: 'Header', icon: <Heading size={20} />, description: 'Edit header' },
   ]

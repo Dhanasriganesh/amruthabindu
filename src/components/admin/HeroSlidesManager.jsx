@@ -15,7 +15,6 @@ function HeroSlidesManager() {
   const [editingSlide, setEditingSlide] = useState(null)
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [formData, setFormData] = useState({
-    image: '',
     title: '',
     titleAccent: '',
     description: '',
@@ -49,7 +48,6 @@ function HeroSlidesManager() {
   const startEdit = (slide) => {
     setEditingSlide(slide.id)
     setFormData({
-      image: slide.image,
       title: slide.title,
       titleAccent: slide.titleAccent,
       description: slide.description,
@@ -67,7 +65,6 @@ function HeroSlidesManager() {
     setIsAddingNew(true)
     setEditingSlide(null)
     setFormData({
-      image: '',
       title: '',
       titleAccent: '',
       description: '',
@@ -84,7 +81,6 @@ function HeroSlidesManager() {
     setEditingSlide(null)
     setIsAddingNew(false)
     setFormData({
-      image: '',
       title: '',
       titleAccent: '',
       description: '',
@@ -98,8 +94,8 @@ function HeroSlidesManager() {
   }
 
   const handleSave = async () => {
-    if (!formData.image || !formData.title) {
-      alert('Please fill in required fields (Image URL and Title)')
+    if (!formData.title) {
+      alert('Please fill in the required Title field')
       return
     }
 
@@ -155,8 +151,10 @@ function HeroSlidesManager() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Hero Carousel Manager</h2>
-          <p className="text-gray-600 mt-1">Manage homepage hero carousel slides</p>
+          <h2 className="text-2xl font-bold text-gray-900">Hero Content Manager</h2>
+          <p className="text-gray-600 mt-1">
+            Manage hero text and buttons. Tablet and desktop use a fixed background image; mobile uses a separate hero image.
+          </p>
         </div>
         <button
           onClick={startAddNew}
@@ -175,21 +173,6 @@ function HeroSlidesManager() {
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Image URL */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Image URL * <span className="text-gray-500">(e.g., /top.jpg or full URL)</span>
-              </label>
-              <input
-                type="text"
-                name="image"
-                value={formData.image}
-                onChange={handleInputChange}
-                placeholder="/top.jpg"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              />
-            </div>
-
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -364,19 +347,6 @@ function HeroSlidesManager() {
                   }`}
                 >
                   <div className="flex gap-4">
-                    {/* Thumbnail */}
-                    <div className="w-32 h-20 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
-                      <img
-                        src={slide.image}
-                        alt={slide.title}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.src = '/placeholder.png'
-                          e.target.alt = 'Image not found'
-                        }}
-                      />
-                    </div>
-
                     {/* Content */}
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
@@ -435,10 +405,10 @@ function HeroSlidesManager() {
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h4 className="font-semibold text-blue-900 mb-2">💡 Tips:</h4>
         <ul className="text-sm text-blue-800 space-y-1">
-          <li>• For best results, use landscape images (16:9 ratio recommended)</li>
-          <li>• Image size: 1920x1080px or larger for high quality</li>
-          <li>• Slides will auto-rotate every 5 seconds</li>
-          <li>• Inactive slides won't show on the website but are saved in database</li>
+          <li>• Hero background images are fixed in the site code for mobile and tablet/desktop</li>
+          <li>• Use this page to edit overlay text, buttons, slide order, and visibility</li>
+          <li>• Slides auto-rotate every 5 seconds when more than one is active</li>
+          <li>• Inactive slides stay saved but are hidden on the website</li>
           <li>• Use Order number to control the sequence (0, 1, 2...)</li>
         </ul>
       </div>
