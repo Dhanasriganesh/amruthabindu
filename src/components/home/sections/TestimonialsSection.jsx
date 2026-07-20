@@ -5,45 +5,11 @@ import { SectionHeading } from '../effects/SectionHeading'
 import { ScrollReveal } from '../effects/ScrollReveal'
 import { DEFAULT_HOME_CONTENT } from '../../../utils/homeContent'
 
-const FALLBACK_TESTIMONIALS = [
-  {
-    name: 'Priya',
-    location: 'Hyderabad, Telangana',
-    avatar: 'P',
-    customerImage: '/reviews/r1.jpg',
-    rating: 5,
-    comment:
-      'The Sunnipindi transformed my skin! Completely natural and so effective. I have recommended it to all my friends.',
-  },
-  {
-    name: 'Rajesh Kumar',
-    location: 'Tirupati, Andhra Pradesh',
-    avatar: 'RK',
-    customerImage: '/reviews/r2.jpg',
-    rating: 5,
-    comment:
-      'Anti Hairfall powder is a game-changer. Natural ingredients, visible results — my hair feels stronger than ever.',
-  },
-  {
-    name: 'Sunita Reddy',
-    location: 'Bangalore, Karnataka',
-    avatar: 'SR',
-    customerImage: '/reviews/r4.jpg',
-    rating: 5,
-    comment:
-      'Authentic quality and traditional recipes. Chemical-free and safe for my entire family. Highly recommended!',
-  },
-  {
-    name: 'Ramya',
-    location: 'Hyderabad, Telangana',
-    avatar: 'R',
-    customerImage: '/reviews/r3.jpg',
-    rating: 5,
-    comment: 'A ritual I look forward to every morning. Pure, luxurious, and trustworthy.',
-  },
-]
+const FALLBACK_TESTIMONIALS = DEFAULT_HOME_CONTENT.testimonials
 
 function TestimonialCard({ testimonial, index }) {
+  const imageLabel = testimonial.productName || testimonial.name
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 24 }}
@@ -56,21 +22,25 @@ function TestimonialCard({ testimonial, index }) {
       <p className="text-white/90 text-base leading-relaxed font-body-premium mb-6 flex-grow">
         {testimonial.comment}
       </p>
-      <div className="relative rounded-2xl overflow-hidden aspect-[4/3] mb-6 flex-shrink-0 bg-white/10">
-        <img
-          src={testimonial.customerImage}
-          alt={`${testimonial.name} review`}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            e.target.style.display = 'none'
-          }}
-        />
-        <div className="absolute top-3 right-3 flex gap-0.5 bg-black/50 rounded-full px-2 py-1">
-          {[...Array(testimonial.rating)].map((_, i) => (
-            <Star key={i} size={12} className="text-[var(--home-gold)] fill-current" />
-          ))}
+      {testimonial.customerImage && (
+        <div className="relative rounded-2xl overflow-hidden aspect-[4/3] mb-4 flex-shrink-0 bg-white/10">
+          <img
+            src={testimonial.customerImage}
+            alt={imageLabel}
+            className="w-full h-full object-contain p-4 bg-white/95"
+          />
+          <div className="absolute top-3 right-3 flex gap-0.5 bg-black/50 rounded-full px-2 py-1">
+            {[...Array(testimonial.rating)].map((_, i) => (
+              <Star key={i} size={12} className="text-[var(--home-gold)] fill-current" />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+      {testimonial.productName && (
+        <p className="text-[var(--home-gold-light)] text-sm font-semibold mb-4 font-body-premium">
+          {testimonial.productName}
+        </p>
+      )}
       <div className="flex items-center gap-4 flex-shrink-0">
         <div className="w-12 h-12 rounded-full bg-[var(--home-gold)] flex items-center justify-center font-display text-lg text-[var(--home-forest-deep)]">
           {testimonial.avatar}

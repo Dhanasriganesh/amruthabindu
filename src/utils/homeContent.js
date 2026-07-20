@@ -11,11 +11,9 @@ export const DEFAULT_HOME_CONTENT = {
       'Every powder tells a story of soil, sun, and generations of Ayurvedic wisdom — bottled without compromise.',
   },
   categories: {
-    dehydratedPowdersImage: HOME_COLLECTION_CATEGORIES[0]?.image || '/hair.jpg',
-    healthMixImage: HOME_COLLECTION_CATEGORIES[1]?.image || '/face.jpg',
-    woodPressedOilsImage:
-      HOME_COLLECTION_CATEGORIES[2]?.image ||
-      '/products-images/cold-pressed-groundnuts-oil.png',
+    dehydratedPowdersImage: '/products-images/dehydrated-curry-leaf-powder.png',
+    healthMixImage: '/products-images/digestive-blend.png',
+    woodPressedOilsImage: '/products-images/cold-pressed-groundnuts-oil.png',
   },
   featuresHeading: {
     label: 'The Amrutha Standard',
@@ -52,39 +50,54 @@ export const DEFAULT_HOME_CONTENT = {
   },
   testimonials: [
     {
-      name: 'Priya',
+      name: 'Priya M.',
       location: 'Hyderabad, Telangana',
-      avatar: 'P',
-      customerImage: '/reviews/r1.jpg',
+      avatar: 'PM',
+      productName: 'Dehydrated Curry Leaf Powder',
+      customerImage: '/products-images/dehydrated-curry-leaf-powder.png',
       rating: 5,
       comment:
-        'The Sunnipindi transformed my skin! Completely natural and so effective. I have recommended it to all my friends.',
+        'The curry leaf powder is fresh, aromatic, and so easy to use. We sprinkle it on rice and dosa — pure, natural, and absolutely delicious.',
     },
     {
       name: 'Rajesh Kumar',
       location: 'Tirupati, Andhra Pradesh',
       avatar: 'RK',
-      customerImage: '/reviews/r2.jpg',
+      productName: 'Cold-Pressed Groundnut Oil',
+      customerImage: '/products-images/cold-pressed-groundnuts-oil.png',
       rating: 5,
       comment:
-        'Anti Hairfall powder is a game-changer. Natural ingredients, visible results — my hair feels stronger than ever.',
+        'Amrutha Bindu groundnut oil has a rich aroma and clean taste. Perfect for everyday cooking — you can tell it is wood-pressed and chemical-free.',
     },
     {
       name: 'Sunita Reddy',
       location: 'Bangalore, Karnataka',
       avatar: 'SR',
-      customerImage: '/reviews/r4.jpg',
+      productName: 'Digestive Blend',
+      customerImage: '/products-images/digestive-blend.png',
       rating: 5,
       comment:
-        'Authentic quality and traditional recipes. Chemical-free and safe for my entire family. Highly recommended!',
+        'The Digestive Blend is a wonderful after-meal ritual for our family. Natural spices, no additives, and it genuinely helps with bloating.',
     },
     {
-      name: 'Ramya',
-      location: 'Hyderabad, Telangana',
-      avatar: 'R',
-      customerImage: '/reviews/r3.jpg',
+      name: 'Ramya K.',
+      location: 'Chennai, Tamil Nadu',
+      avatar: 'Ra',
+      productName: 'Cold-Pressed Kuridi Coconut Oil',
+      customerImage: '/products-images/cold-pressed-coconut-oil.png',
       rating: 5,
-      comment: 'A ritual I look forward to every morning. Pure, luxurious, and trustworthy.',
+      comment:
+        'This coconut oil smells authentic and cooks beautifully. Minimal processing, premium quality — exactly what we wanted for our kitchen.',
+    },
+    {
+      name: 'Anitha S.',
+      location: 'Vijayawada, Andhra Pradesh',
+      avatar: 'AS',
+      productName: 'Cold-Pressed White Sesame Oil',
+      customerImage: '/products-images/cold-pressed-whiteseam-oil.png',
+      rating: 5,
+      comment:
+        'The white sesame oil adds a lovely depth to our curries and chutneys. Traditional wood-pressed quality we trust for daily use.',
     },
   ],
   newsletter: {
@@ -113,6 +126,7 @@ function mergeTestimonials(cmsTestimonials, defaults) {
       name,
       location: item?.location || fallback.location || '',
       avatar: item?.avatar || fallback.avatar || name.slice(0, 2).toUpperCase(),
+      productName: item?.productName || fallback.productName || '',
       customerImage: item?.customerImage || fallback.customerImage || '',
       rating: item?.rating || fallback.rating || 5,
       comment: item?.comment || fallback.comment || '',

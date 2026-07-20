@@ -167,14 +167,14 @@ export const HOME_COLLECTION_CATEGORIES = [
   {
     name: 'Dehydrated Powders',
     href: '/shop/dehydrated-powders',
-    image: '/hair.jpg',
+    image: '/products-images/dehydrated-curry-leaf-powder.png',
     desc: 'Nutrient-rich dehydrated leaf powders and blends',
     span: '',
   },
   {
     name: 'Health mix',
     href: '/shop/health-mix',
-    image: '/face.jpg',
+    image: '/products-images/digestive-blend.png',
     desc: 'Wholesome health mixes and nourishing blends',
     span: '',
   },

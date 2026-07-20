@@ -214,7 +214,7 @@ function HomeContentManager() {
           <ImageField
             label="Dehydrated Powders Category Image"
             value={homeContent.categories?.dehydratedPowdersImage}
-            placeholder="/hair.jpg"
+            placeholder="/products-images/dehydrated-curry-leaf-powder.png"
             onChange={(value) =>
               setHomeContent({
                 ...homeContent,
@@ -225,7 +225,7 @@ function HomeContentManager() {
           <ImageField
             label="Health mix Category Image"
             value={homeContent.categories?.healthMixImage}
-            placeholder="/face.jpg"
+            placeholder="/products-images/digestive-blend.png"
             onChange={(value) =>
               setHomeContent({
                 ...homeContent,
@@ -321,9 +321,16 @@ function HomeContentManager() {
                 />
                 <input
                   type="text"
+                  value={testimonial?.productName || ''}
+                  onChange={(e) => updateTestimonial(index, 'productName', e.target.value)}
+                  placeholder="Product name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                />
+                <input
+                  type="text"
                   value={testimonial?.customerImage || ''}
                   onChange={(e) => updateTestimonial(index, 'customerImage', e.target.value)}
-                  placeholder="/reviews/r1.jpg"
+                  placeholder="/products-images/digestive-blend.png"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 />
                 <textarea
