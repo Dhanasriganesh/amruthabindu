@@ -7,15 +7,19 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import homeMobHero from '../assets/home-mob-hero.jpeg'
+<<<<<<< HEAD
 import mainBg from '../assets/mainbg.jpeg'
+=======
+import mainBg from '../assets/main-bg.jpeg'
+>>>>>>> fe143fbd0a94f52d6546ea461bf4c3b3f669cc6f
 
 const DEFAULT_SLIDES = [
   {
     id: 'default-1',
-    title: 'Timeless Beauty,',
-    titleAccent: 'Naturally Yours',
+    title: '',
+    titleAccent: '',
     description:
-      'Ayurvedic powders handcrafted in small batches — pure, potent, and free from everything your skin should never meet.',
+      '',
     ctaPrimary: 'Explore Collection',
     ctaPrimaryLink: '/shop',
     ctaSecondary: 'Our Story',
@@ -51,6 +55,19 @@ function HeroCarousel({ slides = [] }) {
   const activeSlides = slides.length > 0 ? slides : DEFAULT_SLIDES
   const slide = activeSlides[currentSlide]
 
+<<<<<<< HEAD
+=======
+  const mouseX = useMotionValue(0)
+  const mouseY = useMotionValue(0)
+  const smoothX = useSpring(mouseX, { stiffness: 60, damping: 20 })
+  const smoothY = useSpring(mouseY, { stiffness: 60, damping: 20 })
+  const orbX = useTransform(smoothX, [-0.5, 0.5], [-28, 28])
+  const orbY = useTransform(smoothY, [-0.5, 0.5], [-20, 20])
+  const orb2X = useTransform(smoothX, [-0.5, 0.5], [17, -17])
+  const orb2Y = useTransform(smoothY, [-0.5, 0.5], [16, -16])
+  const orb3X = useTransform(smoothX, [-0.5, 0.5], [-34, 34])
+
+>>>>>>> fe143fbd0a94f52d6546ea461bf4c3b3f669cc6f
   useEffect(() => {
     setCurrentSlide(0)
   }, [slides])
@@ -87,6 +104,7 @@ function HeroCarousel({ slides = [] }) {
         </div>
       </section>
 
+<<<<<<< HEAD
       {/* Tablet / desktop: existing premium carousel */}
       <section className="hero-premium relative hidden min-h-[min(100vh,920px)] md:flex flex-col overflow-hidden -mt-1">
         <div
@@ -97,6 +115,45 @@ function HeroCarousel({ slides = [] }) {
         <div className="relative z-10 flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 pb-8">
           <div className="flex items-center min-h-[calc(100vh-180px)]">
             <div className="text-center lg:text-left">
+=======
+      {/* Tablet / desktop: modified premium hero section with main-bg.jpeg */}
+      <section
+        className="hero-premium relative hidden min-h-[min(100vh,920px)] md:flex flex-col overflow-hidden -mt-1"
+        onMouseMove={handleMouseMove}
+      >
+        {/* Full bleed hero section image replacement */}
+        <div className="absolute inset-0 w-full h-full z-0">
+          <img 
+            src={mainBg} 
+            alt="Amrutha Bindu Background" 
+            className="w-full h-full object-cover object-center"
+            fetchPriority="high"
+          />
+          {/* Subtle overlay adjustments to enhance readability over the background image */}
+          <div className="absolute inset-0 bg-white/10 mix-blend-overlay" />
+          <div className="hero-premium__mesh absolute inset-0 opacity-40" />
+        </div>
+
+        <div className="hero-premium__grid absolute inset-0 opacity-[0.2] pointer-events-none z-0" />
+
+        <motion.div
+          className="hero-premium__orb hero-premium__orb--1 z-0 pointer-events-none"
+          style={{ x: orbX, y: orbY }}
+        />
+        <motion.div
+          className="hero-premium__orb hero-premium__orb--2 z-0 pointer-events-none"
+          style={{ x: orb2X, y: orb2Y }}
+        />
+        <motion.div
+          className="hero-premium__orb hero-premium__orb--3 z-0 pointer-events-none"
+          style={{ x: orb3X, y: orbY }}
+        />
+
+        <div className="relative z-10 flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 pb-8 flex items-center">
+          <div className="w-full max-w-2xl text-center md:text-left">
+            {/* Copy */}
+            <div>
+>>>>>>> fe143fbd0a94f52d6546ea461bf4c3b3f669cc6f
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -132,7 +189,7 @@ function HeroCarousel({ slides = [] }) {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.45, duration: 0.7 }}
-                    className="mt-6 text-base sm:text-lg text-stone-600 max-w-lg mx-auto lg:mx-0 leading-relaxed font-body-premium"
+                    className="mt-6 text-base sm:text-lg text-stone-800 max-w-lg mx-auto md:mx-0 leading-relaxed font-body-premium bg-white/20 backdrop-blur-xs rounded-xl p-2 md:p-0"
                   >
                     {slide.description}
                   </motion.p>
@@ -143,7 +200,7 @@ function HeroCarousel({ slides = [] }) {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.55 }}
-                className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
+                className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-4 justify-center md:justify-start"
               >
                 <Link
                   to={slide.ctaPrimaryLink || '/shop'}
@@ -162,7 +219,7 @@ function HeroCarousel({ slides = [] }) {
               </motion.div>
 
               {activeSlides.length > 1 && (
-                <div className="mt-10 flex items-center justify-center lg:justify-start gap-3">
+                <div className="mt-10 flex items-center justify-center md:justify-start gap-3">
                   {activeSlides.map((_, i) => (
                     <button
                       key={i}
@@ -183,7 +240,11 @@ function HeroCarousel({ slides = [] }) {
         </div>
 
         {/* Bottom stats + scroll */}
+<<<<<<< HEAD
         <div className="relative z-10 border-t border-white/20 bg-black/20 backdrop-blur-sm">
+=======
+        <div className="relative z-10 border-t border-stone-200/60 bg-white/50 backdrop-blur-md mt-auto">
+>>>>>>> fe143fbd0a94f52d6546ea461bf4c3b3f669cc6f
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap gap-6 sm:gap-10 text-center sm:text-left">
               {[
@@ -215,4 +276,4 @@ function HeroCarousel({ slides = [] }) {
   )
 }
 
-export default HeroCarousel
+export default HeroCarousel;
