@@ -17,33 +17,35 @@ export function ManifestoSection({ content = DEFAULT_HOME_CONTENT.manifesto }) {
   return (
     <section
       ref={ref}
-      className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-[var(--home-forest-deep)] text-white home-grain"
+      className="relative min-h-[90vh] flex items-center justify-center bg-[var(--home-forest-deep)] text-white home-grain"
     >
-      <motion.div
-        className="absolute inset-0 opacity-30"
-        style={{
-          y: bgY,
-          backgroundImage:
-            'radial-gradient(ellipse 80% 60% at 50% 120%, rgba(201, 162, 39, 0.35), transparent 70%)',
-        }}
-      />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          className="absolute inset-0 opacity-30"
+          style={{
+            y: bgY,
+            backgroundImage:
+              'radial-gradient(ellipse 80% 60% at 50% 120%, rgba(201, 162, 39, 0.35), transparent 70%)',
+          }}
+        />
+      </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto px-6 sm:px-10 py-24 md:py-32 text-center">
+      <div className="relative z-10 w-full max-w-5xl mx-auto px-5 sm:px-10 py-24 md:py-32 text-center">
         <ScrollReveal>
           <p className="home-section-label text-[var(--home-gold-light)] mb-8">{content.label}</p>
         </ScrollReveal>
 
-        <motion.div style={{ opacity }}>
+        <motion.div style={{ opacity }} className="w-full max-w-full">
           <FallingLetters
             text={content.line1}
             as="p"
-            className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-white block mb-2"
+            className="font-display text-[clamp(1.75rem,7vw,2.5rem)] sm:text-6xl md:text-7xl lg:text-8xl text-white w-full mb-2 leading-[1.15]"
             stagger={0.05}
           />
           <FallingLetters
             text={content.line2}
             as="p"
-            className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl home-shimmer-text block"
+            className="font-display text-[clamp(1.75rem,7vw,2.5rem)] sm:text-6xl md:text-7xl lg:text-8xl home-shimmer-text w-full leading-[1.15]"
             delay={0.35}
             stagger={0.05}
           />
